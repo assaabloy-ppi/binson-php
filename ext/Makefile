@@ -12,7 +12,7 @@ all: build
 
 build: ## Build `binson` PHP extension	
 	mkdir -p ./out
-	./swig/swig -php -outdir ./out -o ./out/binson_light_wrap.c ./binson-c-light/binson_light.i
+	./swig/swig -debug-tmsearch -php7 -outdir ./out -o ./out/binson_light_wrap.c ./binson-c-light/api/binson_light.i
 	cd out && gcc `php-config --includes` -I../binson-c-light -I. -fpic -c \
 		binson_light_wrap.c ../binson-c-light/binson_light.c 
 	gcc -shared ./out/*.o -o ./out/binson.so
