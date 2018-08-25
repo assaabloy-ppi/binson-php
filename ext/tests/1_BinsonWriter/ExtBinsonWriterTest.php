@@ -1,20 +1,10 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-require_once(__DIR__ . '/../out/binson.php');
+require_once(__DIR__ . '/../../out/binson.php');
 
-class BinsonExtTest extends TestCase
+class ExtBinsonWriterTest extends TestCase
 {
-    public function testBinsonExtensionIsAvailable()
-    {   
-        $buf = "_______";
-        $writer = new BinsonWriter($buf);
-        //$parser = new binson_parser();
-
-        $this->assertInstanceOf(BinsonWriter::class, $writer);
-        //$this->assertInstanceOf(binson_parser::class, $parser);
-    }
-
     public function testEmptyBinsonObject() 
     {
         $buf = "____";
@@ -141,15 +131,6 @@ class BinsonExtTest extends TestCase
         $writer->putString("abcde");
     }
 
-    /*public function testSerialization() 
-    {
-        $buf = str_repeat('_', 128);
-
-        $writer = new BinsonWriter($buf);
-        $var = 3;
-
-        $writer->serialize($var);
-    }*/
 
 }
 
