@@ -13,9 +13,9 @@ class ExtBinsonWriterTest extends TestCase
         $writer->objectBegin()
                ->objectEnd();
 
-        $this->assertSame($buf, "\x40\x41__");
-        $this->assertSame($writer->length(), 2);
-        $this->assertSame($writer->toBytes(), "\x40\x41");
+        $this->assertSame("\x40\x41__", $buf);
+        $this->assertSame(2, $writer->length());
+        $this->assertSame("\x40\x41", $writer->toBytes());
     }
 
     public function testEmptyBinsonArray() 
@@ -26,9 +26,9 @@ class ExtBinsonWriterTest extends TestCase
         $writer->arrayBegin()
                ->arrayEnd();
 
-        $this->assertSame($buf, "\x42\x43__");
-        $this->assertSame($writer->length(), 2);
-        $this->assertSame($writer->toBytes(), "\x42\x43");
+        $this->assertSame("\x42\x43__", $buf);
+        $this->assertSame(2, $writer->length());
+        $this->assertSame("\x42\x43", $writer->toBytes());
     }
 
     public function testBooleans() 
@@ -41,8 +41,8 @@ class ExtBinsonWriterTest extends TestCase
                ->putTrue()
                ->putFalse();
 
-        $this->assertSame($writer->length(), 4);
-        $this->assertSame($writer->toBytes(), "\x44\x45\x44\x45");
+        $this->assertSame(4, $writer->length());
+        $this->assertSame("\x44\x45\x44\x45", $writer->toBytes());
     }
 
     public function testIntegers() 
@@ -52,8 +52,8 @@ class ExtBinsonWriterTest extends TestCase
 
         $writer->putInteger(2147483647);
 
-        $this->assertSame($writer->length(), 5);
-        $this->assertSame($writer->toBytes(), "\x12\xff\xff\xff\x7f");
+        $this->assertSame(5, $writer->length());
+        $this->assertSame("\x12\xff\xff\xff\x7f", $writer->toBytes());
     }
 
     public function testDoubles() 
@@ -63,8 +63,8 @@ class ExtBinsonWriterTest extends TestCase
 
         $writer->putDouble(1.23);
 
-        $this->assertSame($writer->length(), 9);
-        $this->assertSame($writer->toBytes(), "\x46\xae\x47\xe1\x7a\x14\xae\xf3\x3f");
+        $this->assertSame(9, $writer->length());
+        $this->assertSame("\x46\xae\x47\xe1\x7a\x14\xae\xf3\x3f", $writer->toBytes());
     }
 
     public function testName() 
@@ -74,8 +74,8 @@ class ExtBinsonWriterTest extends TestCase
 
         $writer->putName("a");
 
-        $this->assertSame($writer->length(), 3);
-        $this->assertSame($writer->toBytes(), "\x14\x01\x61");
+        $this->assertSame(3, $writer->length());
+        $this->assertSame("\x14\x01\x61", $writer->toBytes());
     }
 
     public function testStrings() 
@@ -85,8 +85,8 @@ class ExtBinsonWriterTest extends TestCase
 
         $writer->putString("a");
 
-        $this->assertSame($writer->length(), 3);
-        $this->assertSame($writer->toBytes(), "\x14\x01\x61");
+        $this->assertSame(3, $writer->length());
+        $this->assertSame("\x14\x01\x61", $writer->toBytes());
     }
 
     public function testBytes() 
@@ -96,8 +96,8 @@ class ExtBinsonWriterTest extends TestCase
 
         $writer->putBytes("a");
 
-        $this->assertSame($writer->length(), 3);
-        $this->assertSame($writer->toBytes(), "\x18\x01\x61");
+        $this->assertSame(3, $writer->length());
+        $this->assertSame("\x18\x01\x61", $writer->toBytes());
     }
 
     public function testInline() 
@@ -110,15 +110,15 @@ class ExtBinsonWriterTest extends TestCase
 
         $writer_inline->putBytes("a");
 
-        $this->assertSame($writer_inline->length(), 3);
-        $this->assertSame($writer_inline->toBytes(), "\x18\x01\x61");
+        $this->assertSame(3, $writer_inline->length());
+        $this->assertSame("\x18\x01\x61", $writer_inline->toBytes());
 
         $writer->arrayBegin()
                ->putInline($writer_inline)
                ->arrayEnd();
 
-        $this->assertSame($writer->length(), 5);
-        $this->assertSame($writer->toBytes(), "\x42\x18\x01\x61\x43");
+        $this->assertSame(5, $writer->length());
+        $this->assertSame("\x42\x18\x01\x61\x43", $writer->toBytes());
     }
 
     public function testExceptions() 
