@@ -3,8 +3,8 @@ A PHP implementation of Binson. Binson is an exceptionally simple data serializa
 .
 
 
-Quick start
-###########
+Quick start (PHP extension)
+---------------
 
 ```
 make init
