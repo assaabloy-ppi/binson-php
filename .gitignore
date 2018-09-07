@@ -1,4 +1,7 @@
 composer
 vendor
 *.cache
+composer.lock
+
+
 

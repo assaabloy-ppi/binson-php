@@ -30,6 +30,7 @@ clean: ## Project cleanup
 total_rebuild: ## Cleanup, download dependencies and build `binson` PHP extension
 	$(MAKE) total_clean
 	git clone https://github.com/assaabloy-ppi/binson-c-light.git
+	cd binson-c-light && git reset --hard bc2d8622d2b8c6cb544078dd7a530794ec50fd88
 	git clone https://github.com/swig/swig.git
 	cd swig && ./autogen.sh && ./configure && make
 	$(MAKE) all
