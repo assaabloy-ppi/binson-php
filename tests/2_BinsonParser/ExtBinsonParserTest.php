@@ -1,7 +1,8 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-require_once(__DIR__ . '/../../out/binson.php');
+//require_once(__DIR__ . '/../../out/binson.php');
+require_once(SRC_DIR . 'binson.php');
 
 class ExtBinsonParserTest extends TestCase
 {

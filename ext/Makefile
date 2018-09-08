@@ -41,4 +41,4 @@ rebuild: ## Cleanup and rebuild `binson` PHP extension
 
 
 test: ## Run unit tests for 'ext' subproject
-	php -dextension=./out/binson.so  ../vendor/bin/phpunit -v --testdox tests	
+	php -dextension=./out/binson.so  ../vendor/bin/phpunit -v --bootstrap ../tests/bootstrap_ext.phpb --testdox ../tests

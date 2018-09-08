@@ -17,5 +17,4 @@ update: ## Update current project dependencies
 	php composer/composer update
 
 test: ## Run unit tests for 'binson-php' project & 'ext' subproject
-	vendor/bin/phpunit -v --testdox tests  && \
-	cd ext && make test
+	vendor/bin/phpunit -v --bootstrap ./tests/bootstrap_native.phpb --testdox tests
