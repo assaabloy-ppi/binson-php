@@ -16,7 +16,7 @@ make init
 make update
 ```
 
-Running PHPUnit tests:
+Now run PHPUnit tests:
 ```
 make test
 ```
