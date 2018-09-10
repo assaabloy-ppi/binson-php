@@ -7,6 +7,20 @@ Quick start
 
 Just place `src/binson.php` into your project's source directory and "require" it.
 
+Testing
+========
+
+Initialize environment first:
+```
+make init
+make update
+```
+
+Running PHPUnit tests:
+```
+make test
+```
+
 BinsonWriter class usage examples:
 ============
 
