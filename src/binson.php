@@ -204,19 +204,23 @@ class BinsonWriter
                                                     RecursiveIteratorIterator::SELF_FIRST);
         $last_depth = -1;
         $type_stack = array();
+        $block_type = -1;
 
         foreach($iterator as $key => $value) {
             
             $depth = $iterator->getDepth();
-                        
-            if ($depth > $last_depth) {  // new block detected
+            if ($block_type == -1 && $depth == 0)
                 $block_type = (is_int($key) && $key === 0) ? binson::BINSON_TYPE_ARRAY : binson::BINSON_TYPE_OBJECT;
+
+            if ($depth > $last_depth) {  // new block detected
+                array_push($type_stack, $block_type);         
+                $block_type = (is_int($key) && $key === 0) ? binson::BINSON_TYPE_ARRAY : binson::BINSON_TYPE_OBJECT;       
                 $res = ($block_type == binson::BINSON_TYPE_ARRAY) ? $this->arrayBegin() : $this->objectBegin();
-                array_push($type_stack, $block_type);                
             }            
             else if ($depth < $last_depth) {  // block end detected
-              $block_type = array_pop($type_stack);
               $res = ($block_type == binson::BINSON_TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
+              $block_type = array_pop($type_stack);
+              
             }        
         
             if (is_array($value) )
@@ -229,11 +233,6 @@ class BinsonWriter
             {
               $this->arrayBegin()->arrayEnd(); 
             }
-
-            //if ($block_type == binson::BINSON_TYPE_OBJECT && is_array($value) && count($value) == 1 && key($value) == null)
-            //{
-            //  $this->putString($key);
-            //}
             
             if (!is_array($value) && $value !== null)
             {
@@ -251,49 +250,6 @@ class BinsonWriter
             $res = ($block_type == binson::BINSON_TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
          }
 
-
-/*            $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var),
-                                                     RecursiveIteratorIterator::SELF_FIRST);
-
-            $last_depth = -1;
-            $type_stack = array();
-            foreach($iterator as $key => $value) {
-                $depth = $iterator->getDepth();
-                
-                $v = is_array($value) ? 'ARR' : $value;
-                
-                if (is_array($value) && empty($value))
-                    $this->arrayBegin()->arrayEnd();
-                  //$v = '[]';
-
-                else if ($this->isArrayEmptyBinsonObject($value))
-                  $v = '{}';
-                else
-                // new block
-                if ($depth > $last_depth)
-                {
-                    $block_type = (is_int($key) && $key === 0) ? 1 : 2;
-                    echo $block_type == 1 ? '[' : '{';
-                    array_push($type_stack, $block_type);
-                    
-                }
-                // block end
-                else if ($depth < $last_depth)
-                {
-                  $block_type = array_pop($type_stack);
-                  echo $block_type == 1 ? ']' : '}';
-                }
-                
-                $last_depth = $depth;
-                
-                echo "$depth  $key => $v\n";
-            }
-
-             while ($block_type = array_pop($type_stack))
-             {
-                echo $block_type == 1 ? ']' : '}';
-             }
-*/
         return $this;
     }
 

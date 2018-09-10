@@ -113,6 +113,18 @@ class SerializationTest extends TestCase
         $this->assertSame("\x42\x42\x43\x43", $writer->toBytes());
     }
 
+    public function testNestedEmptyObjectInsideArray() 
+    {
+        $this->markTestSkipped('fix it');
+        
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $writer->put([[null=>null]]);  // [{}]
+        $this->assertSame("\x42\x40\x41\x43", $writer->toBytes());
+    }
+
+
     public function testNestedEmptyObject() 
     {
         $buf = "";
