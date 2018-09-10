@@ -6,41 +6,58 @@ declare(strict_types=1);
 abstract class binson {
     const BINSON_API_VERSION = 'binson_php_v0.0.1a';
 
-    const BINSON_ID_OBJECT         = 0x01;
-    const BINSON_ID_ARRAY          = 0x02;
-    const BINSON_ID_BLOCK          = 0x03;  /* Meta ID. BINSON_ID_OBJECT or BINSON_ID_ARRAY */
+    /* ported from stdint.h */
+    const INT8_MIN   = (-0x7f - 1);
+    const INT16_MIN  = (-0x7fff - 1);
+    const INT32_MIN  = (-0x7fffffff - 1);
+    const INT64_MIN  = (-0x7fffffffffffffff - 1);
+    const INT8_MAX   = 0x7f;
+    const INT16_MAX  = 0x7fff;
+    const INT32_MAX  = 0x7fffffff;
+    const INT64_MAX  = 0x7fffffffffffffff;
 
-    const BINSON_ID_OBJ_BEGIN      = 0x40;
-    const BINSON_ID_OBJ_END        = 0x41;
-    const BINSON_ID_ARRAY_BEGIN    = 0x42;
-    const BINSON_ID_ARRAY_END      = 0x43;
+    const BINSON_OBJECT_MINIMUM_SIZE  = 2;
 
-    const BINSON_ID_BOOLEAN        = 0x47;  /* Meta ID. Translated to one of 2 next consts during serialization */
-    const BINSON_ID_TRUE           = 0x44;
-    const BINSON_ID_FALSE          = 0x45;
-    const BINSON_ID_DOUBLE         = 0x46;
+    const BINSON_DEF_OBJECT_BEGIN     = 0x40;
+    const BINSON_DEF_OBJECT_END       = 0x41;
+    const BINSON_DEF_ARRAY_BEGIN      = 0x42;
+    const BINSON_DEF_ARRAY_END        = 0x43;
+    const BINSON_DEF_TRUE             = 0x44;
+    const BINSON_DEF_FALSE            = 0x45;
+    const BINSON_DEF_DOUBLE           = 0x46;
+    const BINSON_DEF_INT8             = 0x10;
+    const BINSON_DEF_INT16            = 0x11;
+    const BINSON_DEF_INT32            = 0x12;
+    const BINSON_DEF_INT64            = 0x13;
+    const BINSON_DEF_STRINGLEN_INT8   = 0x14;
+    const BINSON_DEF_STRINGLEN_INT16  = 0x15;
+    const BINSON_DEF_STRINGLEN_INT32  = 0x16;
+    const BINSON_DEF_BYTESLEN_INT8    = 0x18;
+    const BINSON_DEF_BYTESLEN_INT16   = 0x19;
+    const BINSON_DEF_BYTESLEN_INT32   = 0x1A;
 
-    const BINSON_ID_INTEGER        = 0x0f;  /* Meta ID. Translated to one of 4 next consts during serialization */
-    const BINSON_ID_INTEGER_8      = 0x10;
-    const BINSON_ID_INTEGER_16     = 0x11;
-    const BINSON_ID_INTEGER_32     = 0x12;
-    const BINSON_ID_INTEGER_64     = 0x13;
+    const BINSON_TYPE_NONE            = 0;
+    const BINSON_TYPE_OBJECT          = 1;
+    const BINSON_TYPE_OBJECT_END      = 2;
+    const BINSON_TYPE_ARRAY           = 3;
+    const BINSON_TYPE_ARRAY_END       = 4;
+    const BINSON_TYPE_BOOLEAN         = 5;
+    const BINSON_TYPE_INTEGER         = 6;
+    const BINSON_TYPE_DOUBLE          = 7;
+    const BINSON_TYPE_STRING          = 8;
+    const BINSON_TYPE_BYTES           = 9;
 
-    const BINSON_ID_STRING         = 0x12;  /* Meta ID. Translated to one of 4 next consts during serialization */
-    const BINSON_ID_STRING_LEN     = 0x13; /* indicates stringLen part of STRING object */
-    const BINSON_ID_STRING_8       = 0x14;
-    const BINSON_ID_STRING_16      = 0x15;
-    const BINSON_ID_STRING_32      = 0x16;
-
-    const BINSON_ID_BYTES          = 0x16;  /* Meta ID. Translated to one of 3 next consts during serialization */
-    const BINSON_ID_BYTES_LEN      = 0x17; /* indicates bytesLen part of BYTES object */
-    const BINSON_ID_BYTES_8        = 0x18;
-    const BINSON_ID_BYTES_16       = 0x19;
-    const BINSON_ID_BYTES_32       = 0x1a;    
+    const BINSON_ERROR_NONE           = 0;
+    const BINSON_ERROR_RANGE          = 1;
+    const BINSON_ERROR_FORMAT         = 2;
+    const BINSON_ERROR_EOF            = 3;
+    const BINSON_ERROR_END_OF_BLOCK   = 4;
+    const BINSON_ERROR_NULL           = 5;
+    const BINSON_ERROR_STATE          = 6;
+    const BINSON_ERROR_WRONG_TYPE     = 7;
+    const BINSON_ERROR_MAX_DEPTH      = 8;
 }
 
-
-//custom exceptions ???
 
 
 class BinsonWriter
@@ -56,61 +73,59 @@ class BinsonWriter
 
     public function objectBegin() : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_OBJ_BEGIN);
+    	$this->writeToken(binson::BINSON_TYPE_OBJECT, binson::BINSON_DEF_OBJECT_BEGIN);
     	return $this;
     }
 
     public function objectEnd() : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_OBJ_END);
+    	$this->writeToken(binson::BINSON_TYPE_OBJECT_END, binson::BINSON_DEF_OBJECT_END);
     	return $this;
     }
 
     public function arrayBegin() : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_ARRAY_BEGIN);
+    	$this->writeToken(binson::BINSON_TYPE_ARRAY, binson::BINSON_DEF_ARRAY_BEGIN);
     	return $this;
     }
 
     public function arrayEnd() : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_ARRAY_END);
+    	$this->writeToken(binson::BINSON_TYPE_ARRAY_END, binson::BINSON_DEF_ARRAY_END);
     	return $this;
     }
 
     public function putBoolean(bool $val) : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_BOOLEAN, $val);
+    	$this->writeToken(binson::BINSON_TYPE_BOOLEAN, $val? binson::BINSON_DEF_TRUE : binson::BINSON_DEF_FALSE);
     	return $this;
     }
 
     public function putTrue() : BinsonWriter
-    {
-    	$this->writeToken(binson::BINSON_ID_BOOLEAN, true);
-    	return $this;
+    {   
+        return $this->putBoolean(true);
     }
 
     public function putFalse() : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_BOOLEAN, false);
-    	return $this;
+        return $this->putBoolean(false);
     }
 
     public function putInteger(int $val) : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_INTEGER, $val);
+    	$this->writeToken(binson::BINSON_TYPE_INTEGER, $val);
     	return $this;
     }
 
     public function putDouble(float $val) : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_DOUBLE, $val);
+    	$this->writeToken(binson::BINSON_TYPE_DOUBLE, $val);
     	return $this;
     }
 
     public function putString(string $val) : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_STRING, $val);
+    	$this->writeToken(binson::BINSON_TYPE_STRING, $val);
     	return $this;
     }
 
@@ -121,13 +136,13 @@ class BinsonWriter
 
     public function putBytes(string $val) : BinsonWriter
     {
-    	$this->writeToken(binson::BINSON_ID_BYTES, $val);
+    	$this->writeToken(binson::BINSON_TYPE_BYTES, $val);
     	return $this;
     }
 
-    public function putInline(BinsonWriter $sub_writer) : BinsonWriter
+    public function putInline(BinsonWriter $src_writer) : BinsonWriter
     {
-    	$this->data .= $sub_writer->data;
+    	$this->data .= $src_writer->data;
     	return $this;
     }
 
@@ -147,149 +162,115 @@ class BinsonWriter
     	return substr($this->data, $this->data_len);
     }
 
+    public function verify() : bool
+    {
+        //$p = new BinsonParser($this->toBytes());
+        //return $p->verify();
+    }
 
-    /*private methods */
+
+    /*======= Private method implementations ====================================*/
 
     private function writeToken(int $token_type, $val = null) : void
     {
-       switch ($token_type) {
+        switch ($token_type) {
+                case binson::BINSON_TYPE_OBJECT:
+                case binson::BINSON_TYPE_OBJECT_END:
+                case binson::BINSON_TYPE_ARRAY:
+                case binson::BINSON_TYPE_ARRAY_END:
+                case binson::BINSON_TYPE_BOOLEAN:
+                    $this->data .= chr($val);
+                    return;
 
-        case binson::BINSON_ID_INTEGER:
-        case binson::BINSON_ID_STRING_LEN:
-        case binson::BINSON_ID_BYTES_LEN:
-        case binson::BINSON_ID_DOUBLE: {
-            /*uint8_t pack_buf[sizeof(int64_t) + 1];
+                case binson::BINSON_TYPE_DOUBLE:
+                case binson::BINSON_TYPE_INTEGER:
+                    $this->data .= util_pack_size($val, $token_type);
+                    return;
 
-            if (!val) {
-                res = BINSON_ID_INVALID_ARG;
-                break;
-            }*/
+                case binson::BINSON_TYPE_STRING:
+                case binson::BINSON_TYPE_BYTES:
+                    $this->data .= util_pack_size(strlen($val), $token_type);
+                    $this->data .= $val;
+                    return;
 
-            /*isize = _binson_util_pack_integer(val->int_val, &(pack_buf[1]), (token_type == BINSON_ID_DOUBLE) ? 1 : 0);
-            pack_buf[0] = (uint8_t)(token_type
-                                    + ((token_type == BINSON_ID_DOUBLE) ? 0 : _binson_util_sizeof_idx((uint8_t)isize)));
-            isize++;
-            res = _binson_io_write(&(pwriter->io), pack_buf, isize);*/
-
-            break;
-        }
-
-        case binson::BINSON_ID_STRING:
-        case binson::BINSON_ID_BYTES: {
-            /*if (!val) {
-                res = BINSON_ID_INVALID_ARG;
-                break;
+                default:
+                    throw_binson_exception(binson::BINSON_ERROR_STATE);
             }
-
-            binson_tok_size tok_size = val->bbuf_val.bsize;
-            binson_value tval;
-
-            tval.int_val = tok_size;
-
-            _binson_writer_write_token(pwriter, (uint8_t)(token_type + 1), &tval); // writes type+len/
-            res = _binson_io_write(&(pwriter->io),
-                                   val->bbuf_val.bptr,
-                                   tok_size); // writes payload: string (without \0) or bytearray 
-            */
-            break;
-        }
-
-        case binson::BINSON_ID_OBJ_BEGIN:
-        case binson::BINSON_ID_ARRAY_BEGIN:
-        case binson::BINSON_ID_OBJ_END:
-        case binson::BINSON_ID_ARRAY_END:
-        case binson::BINSON_ID_TRUE:
-        case binson::BINSON_ID_FALSE:
-            $this->data .= chr($token_type);
-            break;
-
-        case binson::BINSON_ID_BOOLEAN:            
-            /*if (!val) {
-                res = BINSON_ID_INVALID_ARG;
-            }
-            else {
-                res = _binson_io_write_byte(&(pwriter->io), val->bool_val ? BINSON_ID_TRUE : BINSON_ID_FALSE);
-            }*/
-            $this->data .= $val ? chr(binson::BINSON_ID_TRUE) : chr(binson::BINSON_ID_FALSE);
-            break;
-        }
-    }    
+    }
 }
 
 class BinsonParser
 {
 }
 
-function util_sizeof_idx(int $n) : int
+
+function util_pack_size($val, int $type_hint) : string
 {
-    $idx = $n;
-
-    if ($n == 4) {
-        $idx = 3;
-    }
-    else if ($n > 4) {
-        $idx = 4;
-    }
-
-    return $idx;
-}
-
-function util_pack_integer(int $val, bool $is_double) : array
-{
-    //define( "$const" , "$value ",$sensitivity);
-    /*const INT8_MIN   = (-0x7f - 1);
-    const INT16_MIN  = (-0x7fff - 1);
-    const INT32_MIN  = (-0x7fffffff - 1);
-    const INT64_MIN  = (-0x7fffffffffffffff - 1);
-    const INT8_MAX   = 0x7f;
-    const INT16_MAX  = 0x7fff;
-    const INT32_MAX  = 0x7fffffff;
-    const INT64_MAX  = 0x7fffffffffffffff;
-
-    $val_bytes = range(0,7);
+    $val_bytes = array_fill(0, 9, 0);
     $size = 0;
+    $val_unpack_code = 'P'; // 64bit unsigned LE
 
-    if ($is_double) {
+    switch ($type_hint)
+    {
+        case binson::BINSON_TYPE_INTEGER:
+            $val_bytes[0] = binson::BINSON_DEF_INT8; break;            
+        case binson::BINSON_TYPE_DOUBLE:
+            $val_bytes[0] = binson::BINSON_DEF_DOUBLE; 
+            $val_unpack_code = 'e'; // 64bit double LE
+            break;
+        case binson::BINSON_TYPE_STRING:
+            $val_bytes[0] = binson::BINSON_DEF_STRINGLEN_INT8; break;
+        case binson::BINSON_TYPE_BYTES:
+            $val_bytes[0] = binson::BINSON_DEF_BYTESLEN_INT8; break;
+
+        default: break;
+    }
+
+
+    if ($type_hint == binson::BINSON_TYPE_DOUBLE) {
         $size = 8;
     }
     else {
-        if (($val >= INT8_MIN) && ($val <= INT8_MAX)) {
-            size = 1; // sizeof(int8_t);
+        if (($val >= binson::INT8_MIN) && ($val <= binson::INT8_MAX)) {
+            $size = 1; // sizeof(int8_t);
         }
-        else if (($val >= INT16_MIN) && ($val <= INT16_MAX)) {
-            buffer[0] += 1;
-            size = 2; // sizeof(int16_t);
+        else if (($val >= binson::INT16_MIN) && ($val <= binson::INT16_MAX)) {
+            $val_bytes[0] += 1;
+            $size = 2; // sizeof(int16_t);
         }
-        else if (($val >= INT32_MIN) && ($val <= INT32_MAX)) {
-            buffer[0] += 2;
-            size = 4; // sizeof(int32_t);
+        else if (($val >= binson::INT32_MIN) && ($val <= binson::INT32_MAX)) {
+            $val_bytes[0] += 2;
+            $size = 4; // sizeof(int32_t);
         }
         else {
-            size = 8; // sizeof(int64_t);
-            buffer[0] += 3;
+            $size = 8; // sizeof(int64_t);
+            $val_bytes[0] += 3;
         }
     }
 
-   return array($pbuf, $size);
+    return chr($val_bytes[0]) . substr(pack($val_unpack_code, $val), 0, $size);
+}
 
+function throw_binson_exception(int $exc_code) : void
+{
+    switch ($exc_code) {
+        case binson::BINSON_ERROR_NONE:
+            return;
 
-////////
+        case binson::BINSON_ERROR_RANGE:        $msg = 'Range error (buffer is full)'; break;
+        case binson::BINSON_ERROR_FORMAT:       $msg = 'Format error'; break;
+        case binson::BINSON_ERROR_EOF:          $msg = 'End of file detected'; break;
+        case binson::BINSON_ERROR_END_OF_BLOCK: $msg = 'End of block detected'; break;
+        case binson::BINSON_ERROR_NULL:         $msg = 'NULL ref'; break;
+        case binson::BINSON_ERROR_STATE:        $msg = 'Wrong state'; break;
+        case binson::BINSON_ERROR_WRONG_TYPE:   $msg = 'Wrong type'; break;
+        case binson::BINSON_ERROR_MAX_DEPTH:    $msg = 'Max nesting depth reached'; break;
 
-
-
-
-
-    uint64_t uval = (uint64_t) length;
-
-    uint8_t i;
-    for (i = 0; i < size; i++) {
-        buffer[1 + i] = (uint8_t) (uval & 0xFFU);
-        uval >>= 8U;
+        default: 
+            $msg = 'Unknown binson exception with code: ' . $exc_code; break;
     }
 
-    return 1 + size;*/
-
-
+    throw new Exception($msg, $exc_code);
 }
 
 

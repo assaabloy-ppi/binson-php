@@ -14,7 +14,7 @@ build: ## Build `binson` PHP extension
 	mkdir -p ./out
 	./swig/swig -debug-tmsearch -php7 -outdir ./out -o ./out/binson_light_wrap.c ./binson-c-light/api/binson_light.i
 	cd out && gcc `php-config --includes` -I../binson-c-light -I. -fpic -DWITH_TO_STRING=1 -c \
-		binson_light_wrap.c ../binson-c-light/binson_light.c 
+		binson_light_wrap.c ../binson-c-light/binson_writer.c ../binson-c-light/binson_parser.c
 	gcc -shared ./out/*.o -o ./out/binson.so
 	@echo -e '\n\n=========== Trying to load new module ===='
 	php -dextension=./out/binson.so -i -m | grep binson
@@ -30,7 +30,6 @@ clean: ## Project cleanup
 total_rebuild: ## Cleanup, download dependencies and build `binson` PHP extension
 	$(MAKE) total_clean
 	git clone https://github.com/assaabloy-ppi/binson-c-light.git
-	cd binson-c-light && git reset --hard bc2d8622d2b8c6cb544078dd7a530794ec50fd88
 	git clone https://github.com/swig/swig.git
 	cd swig && ./autogen.sh && ./configure && make
 	$(MAKE) all

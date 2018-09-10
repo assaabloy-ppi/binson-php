@@ -11,7 +11,7 @@ class ExtBinsonTest extends TestCase
     {   
 		$this->assertNotEmpty(binson::BINSON_API_VERSION);
 
-        $buf = "_______";
+        $buf = "\x40\x41";
         $writer = new BinsonWriter($buf);
         $parser = new BinsonParser($buf);
 
