@@ -31,10 +31,10 @@ $writer->put($arr, ["a"=>1, "b"=>"c"], true);
 
 Specifying binson OBJECT instead of ARRAY:
 ```PHP
-$writer->put([]);              // [] - empty binson array
-$writer->put([null => null]);  // {} - empty binson object
-$writer->put([[]]);            // [[]] - nested empty arrays
-$writer->put([[null=>null]]);  // [{}] - empty object inside the empty array
+$writer->put([]);                // [] - empty binson array
+$writer->put([null => null]);    // {} - empty binson object
+$writer->put([[]]);              // [[]] - nested empty arrays
+$writer->put([[null => null]]);  // [{}] - empty object inside the empty array
 ```
 
 Low-level API:
