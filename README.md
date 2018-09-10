@@ -3,12 +3,12 @@ A PHP implementation of Binson. Binson is an exceptionally simple data serializa
 
 
 Quick start
-============
+-----------
 
 Just place `src/binson.php` into your project's source directory and "require" it.
 
 Testing
-========
+-----------
 
 Initialize environment first:
 ```
@@ -22,7 +22,7 @@ make test
 ```
 
 BinsonWriter class usage examples:
-============
+-----------
 
 Typical usage (serialization):
 ```PHP
@@ -84,6 +84,6 @@ $writer->objectBegin()
 ```
 
 BinsonParser class usage examples:
-============
+-----------
 
 Under heavy development. Coming very soon!
