@@ -168,8 +168,178 @@ class BinsonWriter
         //return $p->verify();
     }
 
+    public function put(...$vars) : BinsonWriter
+    {
+        foreach ($vars as $var)
+            $this->putOne($var);
+
+        return $this;
+    }
+
+    
+    public function putOne($var) : BinsonWriter
+    {
+        if (!$this->isSerializable($var))
+           throw_binson_exception(binson::BINSON_ERROR_WRONG_TYPE);
+                    
+        switch(gettype($var))
+        {
+            case "array":
+                break;        
+
+            case "string":   return $this->putString($var);
+            case "integer":  return $this->putInteger($var);
+            case "double":   return $this->putDouble($var);
+            case "boolean":  return $this->putBoolean($var);
+
+            default:
+                throw_binson_exception(binson::BINSON_ERROR_WRONG_TYPE);                
+        }
+
+        if (is_array($var) && empty($var)) {  // iterator won't iterate on empty array
+            return $this->arrayBegin()->arrayEnd();
+        }
+
+        $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var),
+                                                    RecursiveIteratorIterator::SELF_FIRST);
+        $last_depth = -1;
+        $type_stack = array();
+
+        foreach($iterator as $key => $value) {
+            
+            $depth = $iterator->getDepth();
+                        
+            if ($depth > $last_depth) {  // new block detected
+                $block_type = (is_int($key) && $key === 0) ? binson::BINSON_TYPE_ARRAY : binson::BINSON_TYPE_OBJECT;
+                $res = ($block_type == binson::BINSON_TYPE_ARRAY) ? $this->arrayBegin() : $this->objectBegin();
+                array_push($type_stack, $block_type);                
+            }            
+            else if ($depth < $last_depth) {  // block end detected
+              $block_type = array_pop($type_stack);
+              $res = ($block_type == binson::BINSON_TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
+            }        
+        
+            if (is_array($value) )
+            {
+              if ($block_type == binson::BINSON_TYPE_OBJECT)
+                $this->putString($key);
+            }
+
+            if (is_array($value) && empty($value))
+            {
+              $this->arrayBegin()->arrayEnd(); 
+            }
+
+            //if ($block_type == binson::BINSON_TYPE_OBJECT && is_array($value) && count($value) == 1 && key($value) == null)
+            //{
+            //  $this->putString($key);
+            //}
+            
+            if (!is_array($value) && $value !== null)
+            {
+              if ($block_type == binson::BINSON_TYPE_OBJECT)
+                $this->putString($key);
+
+              $this->putOne($value);
+            }            
+
+            $last_depth = $depth;
+        }
+
+         while ($block_type = array_pop($type_stack))
+         {
+            $res = ($block_type == binson::BINSON_TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
+         }
+
+
+/*            $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var),
+                                                     RecursiveIteratorIterator::SELF_FIRST);
+
+            $last_depth = -1;
+            $type_stack = array();
+            foreach($iterator as $key => $value) {
+                $depth = $iterator->getDepth();
+                
+                $v = is_array($value) ? 'ARR' : $value;
+                
+                if (is_array($value) && empty($value))
+                    $this->arrayBegin()->arrayEnd();
+                  //$v = '[]';
+
+                else if ($this->isArrayEmptyBinsonObject($value))
+                  $v = '{}';
+                else
+                // new block
+                if ($depth > $last_depth)
+                {
+                    $block_type = (is_int($key) && $key === 0) ? 1 : 2;
+                    echo $block_type == 1 ? '[' : '{';
+                    array_push($type_stack, $block_type);
+                    
+                }
+                // block end
+                else if ($depth < $last_depth)
+                {
+                  $block_type = array_pop($type_stack);
+                  echo $block_type == 1 ? ']' : '}';
+                }
+                
+                $last_depth = $depth;
+                
+                echo "$depth  $key => $v\n";
+            }
+
+             while ($block_type = array_pop($type_stack))
+             {
+                echo $block_type == 1 ? ']' : '}';
+             }
+*/
+        return $this;
+    }
+
+    private function isArrayEmptyBinsonObject($var) : bool
+    {
+        // check for [null => null]
+        if (!is_array($var))
+            return false;
+
+        if (count($var) == 1 && key($var) == null && $var[key($var)] == null)
+            return true;
+
+        return false;
+    }
+
+    private function isSerializable($var) : bool
+    {
+            if (is_array($var))
+            {
+                if ($this->isArrayEmptyBinsonObject($var))
+                    return true;
+
+                $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var),
+                                                     RecursiveIteratorIterator::SELF_FIRST);
+                foreach($iterator as $key => $value)
+                {   
+                    if ($key == null && $value == null)  // specific case: 'null => null' means object instead of array
+                        return true;
+
+                    //if ( !(is_int($key) && is_string($var) && is_array($var)) || !$this->isSerializable($value))
+                    //    return false;
+                }             
+                return true;
+            }
+
+            if ( is_string($var) ||
+                 is_int($var) ||
+                 is_float($var) ||
+                 is_bool($var) )
+            return true;
+
+            return false;
+    }
 
     /*======= Private method implementations ====================================*/
+
 
     private function writeToken(int $token_type, $val = null) : void
     {
