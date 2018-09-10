@@ -15,20 +15,20 @@ Typical usage (serialization):
 $writer = new BinsonWriter();
 $writer->put( ["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7] );
 ```
-
+&nbsp;  
 "Streaming" to existing string:
 ```PHP
 $buffer = "";
 $writer = new BinsonWriter($buffer);
 ...
 ```
-
+&nbsp;  
 Serializing multiple variables/literals:
 ```PHP
 $arr = [1,2,3];
 $writer->put($arr, ["a"=>1, "b"=>"c"], true);
 ```
-
+&nbsp;  
 Specifying binson OBJECT instead of ARRAY:
 ```PHP
 $writer->put([]);                // [] - empty binson array
@@ -36,7 +36,7 @@ $writer->put([null => null]);    // {} - empty binson object
 $writer->put([[]]);              // [[]] - nested empty arrays
 $writer->put([[null => null]]);  // [{}] - empty object inside the empty array
 ```
-
+&nbsp;  
 Low-level API:
 ```PHP
 $writer->objectBegin();
@@ -57,7 +57,7 @@ $len = $writer->length();
 $str = $writer->toBytes();
 $res = $writer->verify();
 ```
-
+&nbsp;  
 Method chaining:
 ```PHP
 $writer->objectBegin()
