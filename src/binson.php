@@ -656,13 +656,13 @@ class BinsonParser
                                 ],
                                 'parent' => [
                                     self::STATE_UNDEFINED               => self::STATE_DONE, // [], done top array
-                                    //self::STATE_ENTER_OBJECT            => self::STATE_ENTER_OBJECT,  
+                                    self::STATE_ENTER_OBJECT            => self::STATE_ENTER_OBJECT,  
                                     self::STATE_IN_OBJ_FIELD            => self::STATE_IN_OBJ_VALUE, // {'a':>[]<}, array as value
                                     self::STATE_IN_OBJ_VALUE            => self::STATE_ERROR,   // handled before {'a':3,[]]><}
                                     //self::STATE_LEAVE_OBJECT            => self::STATE_LEAVE_ARRAY,
-                                    //self::STATE_ENTER_ARRAY             => self::STATE_LEAVE_ARRAY,
+                                    self::STATE_ENTER_ARRAY             => self::STATE_LEAVE_ARRAY,
                                     self::STATE_IN_ARRAY                => self::STATE_IN_ARRAY, // no change, [1,[]><,3]
-                                    //self::STATE_LEAVE_ARRAY             => self::STATE_LEAVE_ARRAY
+                                    self::STATE_LEAVE_ARRAY             => self::STATE_LEAVE_ARRAY
                                     //self::STATE_DONE                    => self::STATE_ERROR,   
                                     //self::STATE_ERROR                   => self::STATE_ERROR                                
                                 ]                                
@@ -762,7 +762,7 @@ class BinsonParser
 
     public function dump() : string
     {
-        return (string)$this;
+        return print_r($this, true);
     }
 
     public function verify() : bool
@@ -954,7 +954,8 @@ class BinsonParser
                 case self::STATE_DONE:
                     return true;    
                     
-                case $state_update['id'] & self::STATE_MASK_LEAVE:
+                // only apply to current *LEAVE* states, not to parent
+                case $rule_no == 0 && ($state_update['id'] & self::STATE_MASK_LEAVE):
                     $this->state[] = $state_update;
 
                     if ($cb)
