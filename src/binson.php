@@ -883,10 +883,18 @@ class BinsonParser
     public function advance_test1(int $scan_mode, ?string $scan_name, int $ensure_type,
     ?callable $cb, $cb_param = null) : bool
     {   
-        $str = '';
+        
         //$this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbDebug1'], null);
+        
+        /*$str = '';
         $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbToString'], $str);
-        echo "'".$str."'".PHP_EOL; 
+        echo "'".$str."'".PHP_EOL; */
+
+        $data = [];
+        $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbDeserializer'], $data);
+        print_r($data['data']);
+        echo json_encode($data['data']);
+
         return true;      
     }
 
@@ -958,8 +966,7 @@ class BinsonParser
                 case $rule_no == 0 && ($state_update['id'] & self::STATE_MASK_LEAVE):
                     $this->state[] = $state_update;
 
-                    if ($cb)
-                        $cb(0, $cb_param);  // first cb call with *LEAVE* state
+                    $cb_res = $cb($cb_param) ?? null;  // first cb call with *LEAVE* state
 
                     $this->depth--;
                     break; /// second iteration, need to apply `parent` transition rule
@@ -970,9 +977,7 @@ class BinsonParser
 
                     // update state
                     $this->state[] = $state_update; // copy id, type, value
-                    if ($cb)
-                        $cb(0, $cb_param);
-
+                    $cb_res = $cb($cb_param) ?? null;
                     break;
                 }
 
@@ -1076,10 +1081,75 @@ class BinsonParser
         throw new BinsonException(binson::ERROR_WRONG_TYPE);
     }
 
-    private function cbValidator($new_state_flags, &$param = null) : bool
+    private function cbValidator(&$param = null) : bool
     {}
 
-    private function cbToString($new_state_flags, &$param = null) : bool
+    private function cbDeserializer(&$param = null) : bool
+    {
+        if (!is_array($param))
+            throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbDeserializer() require `array` parameter");
+
+        if (empty($param)) {  // first cb run
+                $param = ['data'=>[], 'parent'=>[]];
+                $param['current'] = &$param['data'];
+        }            
+
+        $new_state = $this->state[-1]; // see internals, later replace with constant
+        $depth = $this->depth;
+
+        switch ($new_state['id']) {
+            case self::STATE_ENTER_ARRAY:
+            case self::STATE_ENTER_OBJECT:
+                $param['parent'][] = &$param['current'];
+                $param['current'][] = [];
+
+                end($param['current']);
+                $param['current'] = &$param['current'][key($param['current'])];
+
+                //$param['current'] = &$param['current'];
+
+
+                return true;
+            case self::STATE_LEAVE_ARRAY:
+            case self::STATE_LEAVE_OBJECT:
+                $param['current'] = array_pop($param['parent']);
+                end($param['current']);
+                return true;
+
+            case self::STATE_IN_OBJ_FIELD:
+                $param .= '"'.$new_state['val'].'":';
+                return true;
+            case self::STATE_IN_OBJ_VALUE:
+            case self::STATE_IN_ARRAY:
+            {
+                switch ($new_state['type']) {
+                case binson::TYPE_BOOLEAN:
+                case binson::TYPE_DOUBLE:
+                case binson::TYPE_INTEGER:
+                    $param .= $new_state['val'];
+                    return true;
+                case binson::TYPE_STRING:
+                    $param .= '"'.$new_state['val'].'"';
+                    return true;
+                case binson::TYPE_BYTES:
+                    $param .= '"'.bin2hex($new_state['val']).'"';
+                    return true;
+    
+                default: /* we should not get here */
+                    throw new BinsonException(binson::ERROR_WRONG_TYPE, "unsupported type detected");
+                }
+            }
+            case self::STATE_DONE:
+            case self::STATE_UNDEFINED;
+                return true;
+
+            default:
+                throw new BinsonException(binson::ERROR_STATE, "unsupported state");
+        }
+        return true;        
+    }
+
+    private function cbToString(&$param = null) : bool
     {
         if (!is_string($param))
             throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbToString() require `string` parameter");
@@ -1133,7 +1203,7 @@ class BinsonParser
         return true;
     }
 
-    private function cbDebug1($new_state_flags, &$param = null) : bool
+    private function cbDebug1(&$param = null) : bool
     {
         /*switch ($this->state['id']) {
             self::STATE
