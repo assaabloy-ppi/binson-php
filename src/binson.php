@@ -418,7 +418,7 @@ class BinsonParserStateStack implements ArrayAccess
 
     public function offsetGet($offset) {
         if ($offset === -1)
-            return $this->data[$this->bp->depth];
+            return $this->data[$this->bp->depth] ?? null;
         else
             return isset($this->data[$this->bp->depth][$offset]) ?
                      $this->data[$this->bp->depth][$offset] : null;
@@ -498,7 +498,7 @@ class BinsonParser
     private const STATE_DONE           = 0x0100;
     private const STATE_ERROR          = 0x0200;
 
-
+    private const STATE_MASK_INNER   = self::STATE_IN_OBJ_VALUE | self::STATE_IN_ARRAY;
     private const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR;
     private const STATE_MASK_CTX_UPD   = self::STATE_MASK_ENTER | self::STATE_MASK_LEAVE;
 
@@ -868,7 +868,7 @@ class BinsonParser
 
     public function getValue()
     {
-        return $this->state['value'];
+        return $this->state['val'];
     }
 
     public function getRaw() : string
@@ -886,14 +886,16 @@ class BinsonParser
         
         //$this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbDebug1'], null);
         
-        /*$str = '';
+        $str = '';
         $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbToString'], $str);
-        echo "'".$str."'".PHP_EOL; */
+        echo "'".$str."'".PHP_EOL; 
 
+        /*
         $data = [];
         $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbDeserializer'], $data);
         print_r($data['data']);
         echo json_encode($data['data']);
+        */
 
         return true;      
     }
@@ -962,26 +964,34 @@ class BinsonParser
                 case self::STATE_DONE:
                     return true;    
                     
-                // only apply to current *LEAVE* states, not to parent
-                case $rule_no == 0 && ($state_update['id'] & self::STATE_MASK_LEAVE):
-                    $this->state[] = $state_update;
+                }
 
-                    $cb_res = $cb($cb_param) ?? null;  // first cb call with *LEAVE* state
-
-                    $this->depth--;
-                    break; /// second iteration, need to apply `parent` transition rule
-                    /// with second callback call ???
-
-                case $state_update['id'] & self::STATE_MASK_ENTER:
+                if ($state_update['id'] & self::STATE_MASK_ENTER)
+                {
                     $this->depth++;
 
                     // update state
+                    $prev_state = $this->state[-1];
                     $this->state[] = $state_update; // copy id, type, value
-                    $cb_res = $cb($cb_param) ?? null;
-                    break;
+                    $cb_res = $cb($prev_state, $cb_param) ?? null;
                 }
 
+                // only apply to current *LEAVE* states, not to parent
+                if ($rule_no == 0 && ($state_update['id'] & self::STATE_MASK_LEAVE))
+                {
+                    $prev_state = $this->state[-1];
+                    $this->state[] = $state_update;
+                    $cb_res = $cb($prev_state, $cb_param) ?? null;  // first cb call with *LEAVE* state
+                    
+                    $this->depth--;
+                }
 
+                if ($state_update['id'] & self::STATE_MASK_INNER) 
+                {
+                    $prev_state = $this->state[-1];
+                    $this->state[] = $state_update;
+                    $cb_res = $cb($prev_state, $cb_param) ?? null;
+                }
             }
 
             //if ($state_update['id'] & self::STATE_MASK_CTX_UPD) 
@@ -1048,17 +1058,17 @@ class BinsonParser
 
             case binson::DEF_FALSE:
             case binson::DEF_TRUE:
-                return ['type' => binson::TYPE_BOOLEAN, 'value' => ($byte === binson::DEF_TRUE)];
+                return ['type' => binson::TYPE_BOOLEAN, 'val' => ($byte === binson::DEF_TRUE)];
 
             case binson::DEF_DOUBLE:                 
-                return ['type' => binson::TYPE_DOUBLE, 'value' => $this->parseNumeric($this->consume(8), true)];
+                return ['type' => binson::TYPE_DOUBLE, 'val' => $this->parseNumeric($this->consume(8), true)];
 
             case binson::DEF_INT8:
             case binson::DEF_INT16:
             case binson::DEF_INT32:
             case binson::DEF_INT64:                             
                 $size = 1 << ($byte - 14);
-                return ['type' => binson::TYPE_INTEGER, 'value' => $this->parseNumeric($this->consume($size))];
+                return ['type' => binson::TYPE_INTEGER, 'val' => $this->parseNumeric($this->consume($size))];
 
             /* string and field names processing */
             case binson::DEF_STRLEN_INT8:
@@ -1075,16 +1085,16 @@ class BinsonParser
                     throw new BinsonException(binson::ERROR_FORMAT);
 
                 return ['type' => $def_bytes? binson::TYPE_BYTES : binson::TYPE_STRING, 
-                        'value' => $this->consume($len)];                        
+                        'val' => $this->consume($len)];                        
         }
 
         throw new BinsonException(binson::ERROR_WRONG_TYPE);
     }
 
-    private function cbValidator(&$param = null) : bool
+    private function cbValidator(array $prev_state, &$param = null) : bool
     {}
 
-    private function cbDeserializer(&$param = null) : bool
+    private function cbDeserializer(array $prev_state, &$param = null) : bool
     {
         if (!is_array($param))
             throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbDeserializer() require `array` parameter");
@@ -1100,10 +1110,10 @@ class BinsonParser
         switch ($new_state['id']) {
             case self::STATE_ENTER_ARRAY:
             case self::STATE_ENTER_OBJECT:
-                $param['parent'][] = &$param['current'];
+                $param['parent'][] = $param['current'];
                 $param['current'][] = [];
 
-                end($param['current']);
+                end($param['current']);                
                 $param['current'] = &$param['current'][key($param['current'])];
 
                 //$param['current'] = &$param['current'];
@@ -1112,8 +1122,12 @@ class BinsonParser
                 return true;
             case self::STATE_LEAVE_ARRAY:
             case self::STATE_LEAVE_OBJECT:
+                unset($param['current']);
                 $param['current'] = array_pop($param['parent']);
-                end($param['current']);
+                debug_zval_dump($param['parent']);
+
+                //end($param['current']);
+
                 return true;
 
             case self::STATE_IN_OBJ_FIELD:
@@ -1124,6 +1138,8 @@ class BinsonParser
             {
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
+                    $param .= var_export($new_state['val'], true);
+                    return true;
                 case binson::TYPE_DOUBLE:
                 case binson::TYPE_INTEGER:
                     $param .= $new_state['val'];
@@ -1149,8 +1165,8 @@ class BinsonParser
         return true;        
     }
 
-    private function cbToString(&$param = null) : bool
-    {
+    private function cbToString(?array $prev_state, &$param = null) : bool
+    {        
         if (!is_string($param))
             throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbToString() require `string` parameter");
 
@@ -1176,11 +1192,12 @@ class BinsonParser
             case self::STATE_IN_OBJ_VALUE:
             case self::STATE_IN_ARRAY:
             {
+                $param .= ($prev_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
                 case binson::TYPE_DOUBLE:
                 case binson::TYPE_INTEGER:
-                    $param .= $new_state['val'];
+                    $param .= var_export($new_state['val'], true);
                     return true;
                 case binson::TYPE_STRING:
                     $param .= '"'.$new_state['val'].'"';
@@ -1203,7 +1220,7 @@ class BinsonParser
         return true;
     }
 
-    private function cbDebug1(&$param = null) : bool
+    private function cbDebug1(array $prev_state, &$param = null) : bool
     {
         /*switch ($this->state['id']) {
             self::STATE
