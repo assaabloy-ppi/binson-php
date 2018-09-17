@@ -1088,8 +1088,9 @@ class BinsonParser
             case binson::DEF_BYTESLEN_INT8:
             case binson::DEF_BYTESLEN_INT16:
             case binson::DEF_BYTESLEN_INT32:
-                $def_bytes = ($byte >= binson::DEF_BYTESLEN_INT8);
-                $len_size = 1 << ($byte - $def_bytes? 0x24 : 0x20);
+                $def_bytes = $byte >= binson::DEF_BYTESLEN_INT8;
+                $delta = $def_bytes? binson::DEF_BYTESLEN_INT8 : binson::DEF_STRLEN_INT8;
+                $len_size = 1 << ($byte - $delta);
                 $len = $this->parseNumeric($this->consume($len_size));
 
                 if ($len < 0 || $len > binson::INT32_MAX)
@@ -1319,6 +1320,7 @@ class BinsonParser
 
     private function parseNumeric(string $chunk, bool $is_float = false)
     {
+        $len = strlen($chunk);
         $filler = chr(ord($chunk[-1]) & 0x80 ? 0xff : 0x00);
         $chunk = str_pad($chunk, 8, $filler);
         
@@ -1381,7 +1383,7 @@ function util_pack_size($val, int $type_hint) : string
             $val_unpack_code = 'e'; // 64bit double LE
             break;
         case binson::TYPE_STRING:
-            $val_bytes[0] = binson::DEF_STRINGLEN_INT8; break;
+            $val_bytes[0] = binson::DEF_STRLEN_INT8; break;
         case binson::TYPE_BYTES:
             $val_bytes[0] = binson::DEF_BYTESLEN_INT8; break;
 

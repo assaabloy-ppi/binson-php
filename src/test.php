@@ -10,7 +10,7 @@ $buf = "\x42\x12\xff\xff\xff\x7f\x43";
 $b = "";
 $writer = new BinsonWriter($b);
 
-$src = [-123.45];
+$src = ["abc", "dcd", ["ddf"], "err"];
 
 $writer->put($src);
 
