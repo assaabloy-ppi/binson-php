@@ -1319,15 +1319,10 @@ class BinsonParser
 
     private function parseNumeric(string $chunk, bool $is_float = false)
     {
-        $len = strlen($chunk);
-        $unpack_code = $is_float? 'e' : 'P';    
-
-        echo bin2hex($chunk).PHP_EOL;
-        $filler = chr(ord($chunk[-1]) & 0x80 ? 0xff : 0x0);
-        $chunk = str_pad($chunk, 8, $filler, STR_PAD_RIGHT);
-        echo bin2hex($chunk).PHP_EOL;
+        $filler = chr(ord($chunk[-1]) & 0x80 ? 0xff : 0x00);
+        $chunk = str_pad($chunk, 8, $filler);
         
-        $val = unpack($unpack_code, $chunk);
+        $val = unpack($is_float? 'e' : 'P', $chunk);
         $v = $val[1];  // for beter code readability only        
 
         if (is_float($v))
