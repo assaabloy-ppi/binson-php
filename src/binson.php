@@ -278,24 +278,33 @@ class BinsonWriter
         $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var),
                                                     RecursiveIteratorIterator::SELF_FIRST);
         $last_depth = -1;
-        $type_stack = array();
+        $type_stack = [];
         $block_type = -1;
 
         foreach($iterator as $key => $value) {
             
-            $depth = $iterator->getDepth();
+            $depth = $iterator->getDepth();   
+          
+            while ($depth < $last_depth)
+            {                
+                $block_type = array_pop($type_stack);
+                $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();                
+                $last_depth--;
+            }
+          
             if ($block_type == -1 && $depth == 0)
                 $block_type = (is_int($key) && $key === 0) ? binson::TYPE_ARRAY : binson::TYPE_OBJECT;
-
+            
             if ($depth > $last_depth) {  // new block detected
-                array_push($type_stack, $block_type);         
-                $block_type = (is_int($key) && $key === 0) ? binson::TYPE_ARRAY : binson::TYPE_OBJECT;       
+                $block_type = (!is_int($key)) ? binson::TYPE_OBJECT : binson::TYPE_ARRAY;       
                 $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayBegin() : $this->objectBegin();
+                $type_stack[] = $block_type;
+                
+                //continue;
             }            
-            else if ($depth < $last_depth) {  // block end detected
+            else if ($depth < $last_depth) {  // block end detected              
               $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
-              $block_type = array_pop($type_stack);
-              
+              $block_type = array_pop($type_stack);              
             }        
         
             if (is_array($value) )
@@ -317,13 +326,18 @@ class BinsonWriter
               $this->putOne($value);
             }            
 
-            $last_depth = $depth;
+            ////if ($last_depth - $depth > 1)
+             //$last_depth--;
+            //else 
+             $last_depth = $depth;
+             
         }
 
-         while ($block_type = array_pop($type_stack))
-         {
+        while ($block_type = array_pop($type_stack))
+        {            
             $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
-         }
+            //$last_depth--;
+        }
 
         return $this;
     }
@@ -1197,9 +1211,11 @@ class BinsonParser
                 return true;
             case self::STATE_LEAVE_ARRAY:
                 $param .= ']';
+                //$param .= ($_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 return true;
             case self::STATE_LEAVE_OBJECT:
                 $param .= '}';
+                //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 return true;
             case self::STATE_IN_OBJ_FIELD:
                 $param .= '"'.$new_state['val'].'":';

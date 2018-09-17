@@ -115,8 +115,6 @@ class SerializationTest extends TestCase
 
     public function testNestedEmptyObjectInsideArray() 
     {
-        $this->markTestSkipped('fix it');
-        
         $buf = "";
         $writer = new BinsonWriter($buf);
 
@@ -152,6 +150,15 @@ class SerializationTest extends TestCase
         $this->assertSame("\x42\x44\x10\x7b\x14\x01\x62\x42\x43\x10\x05\x43", $writer->toBytes());
     }
 
+    public function testItemAfterNestedArrays() 
+    {
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $writer->put([[["xc"]], "err"]);
+        $this->assertSame("\x42\x42\x42\x14\x02\x78\x63\x43\x43\x14\x03\x65\x72\x72\x43", $writer->toBytes());
+    }
+
     public function testComplexObject() 
     {
         $buf = "";
@@ -160,10 +167,7 @@ class SerializationTest extends TestCase
         $writer->put(["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7]);
         $this->assertSame(bin2hex("\x40\x14\x01\x61\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43\x14\x01\x62\x45\x14\x01\x63\x10\x07\x41"), bin2hex($writer->toBytes()));
 
-        //-'401401614244107b140162100543 14016245140163 100741'
-       //+'401401614244107b140162100543 45 100741'
-
-    }
+   } 
 
 }
 

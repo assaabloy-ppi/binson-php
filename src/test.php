@@ -10,12 +10,15 @@ $buf = "\x42\x12\xff\xff\xff\x7f\x43";
 $b = "";
 $writer = new BinsonWriter($b);
 
-$src = ["abc", "dcd", ["ddf"], "err"];
+//$src = ["abc", "dcd", ["ddf",["xc"]], "err"];
+$src = [[null=>null]];
+//$src = [true];
 
 $writer->put($src);
-
 echo bin2hex($b).PHP_EOL;
+
 $p = new BinsonParser($b);
+
 
 $encdec = $p->tostr();
 
