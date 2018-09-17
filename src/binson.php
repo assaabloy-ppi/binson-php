@@ -417,8 +417,10 @@ class BinsonParserStateStack implements ArrayAccess
     }
 
     public function offsetGet($offset) {
-        if ($offset === -1)
+        if ($offset === 'top')
             return $this->data[$this->bp->depth] ?? null;
+        elseif ($offset === 'parent')
+            return $this->data[$this->bp->depth - 1] ?? null;
         else
             return isset($this->data[$this->bp->depth][$offset]) ?
                      $this->data[$this->bp->depth][$offset] : null;
@@ -499,6 +501,7 @@ class BinsonParser
     private const STATE_ERROR          = 0x0200;
 
     private const STATE_MASK_INNER   = self::STATE_IN_OBJ_VALUE | self::STATE_IN_ARRAY;
+
     private const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR;
     private const STATE_MASK_CTX_UPD   = self::STATE_MASK_ENTER | self::STATE_MASK_LEAVE;
 
@@ -532,7 +535,8 @@ class BinsonParser
     
     const TYPE_FIELD              = 0x0200;
     const TYPE_MASK_VALUE         = 0x01f0;
-
+    const TYPE_MASK_PRIMITIVE     = binson::TYPE_BOOLEAN | binson::TYPE_INTEGER |
+                                    binson::TYPE_DOUBLE | binson::TYPE_STRING | binson::TYPE_BYTES;
 
     
     const ADVANCE_ONE           = 0x01;
@@ -971,7 +975,7 @@ class BinsonParser
                     $this->depth++;
 
                     // update state
-                    $prev_state = $this->state[-1];
+                    $prev_state = $this->state['top'];
                     $this->state[] = $state_update; // copy id, type, value
                     $cb_res = $cb($prev_state, $cb_param) ?? null;
                 }
@@ -979,7 +983,7 @@ class BinsonParser
                 // only apply to current *LEAVE* states, not to parent
                 if ($rule_no == 0 && ($state_update['id'] & self::STATE_MASK_LEAVE))
                 {
-                    $prev_state = $this->state[-1];
+                    $prev_state = $this->state['top'];
                     $this->state[] = $state_update;
                     $cb_res = $cb($prev_state, $cb_param) ?? null;  // first cb call with *LEAVE* state
                     
@@ -988,7 +992,7 @@ class BinsonParser
 
                 if ($state_update['id'] & self::STATE_MASK_INNER) 
                 {
-                    $prev_state = $this->state[-1];
+                    $prev_state = $this->state['top'];
                     $this->state[] = $state_update;
                     $cb_res = $cb($prev_state, $cb_param) ?? null;
                 }
@@ -1104,7 +1108,7 @@ class BinsonParser
                 $param['current'] = &$param['data'];
         }            
 
-        $new_state = $this->state[-1]; // see internals, later replace with constant
+        $new_state = $this->state['top'];
         $depth = $this->depth;
 
         switch ($new_state['id']) {
@@ -1170,14 +1174,17 @@ class BinsonParser
         if (!is_string($param))
             throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbToString() require `string` parameter");
 
-        $new_state = $this->state[-1]; // see internals, later replace with constant
+        $new_state = $this->state['top'];
+        $parent_state = $this->state['parent'];
         $depth = $this->depth;
-        
+                
         switch ($new_state['id']) {
             case self::STATE_ENTER_ARRAY:
+                $param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 $param .= '[';
                 return true;
             case self::STATE_ENTER_OBJECT:
+                $param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 $param .= '{';
                 return true;
             case self::STATE_LEAVE_ARRAY:
@@ -1192,7 +1199,11 @@ class BinsonParser
             case self::STATE_IN_OBJ_VALUE:
             case self::STATE_IN_ARRAY:
             {
-                $param .= ($prev_state['id'] & self::STATE_MASK_INNER)? ',' : '';
+                // totally ignore "unsupported" end types here            
+                if (!($new_state['type'] & self::TYPE_MASK_PRIMITIVE))
+                    return true;
+
+                $param .= ($prev_state['id'] & self::STATE_MASK_INNER) ? ',' : '';
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
                 case binson::TYPE_DOUBLE:
@@ -1207,7 +1218,9 @@ class BinsonParser
                     return true;
     
                 default: /* we should not get here */
-                    throw new BinsonException(binson::ERROR_WRONG_TYPE, "unsupported type detected");
+                    break;
+                    //throw new BinsonException(binson::ERROR_WRONG_TYPE, 
+                    //        "unsupported type detected: ".$new_state['type']);
                 }
             }
             case self::STATE_DONE:
@@ -1225,7 +1238,7 @@ class BinsonParser
         /*switch ($this->state['id']) {
             self::STATE
         }*/
-        $new_state = $this->state[-1];
+        $new_state = $this->state['top'];
         $d = $this->depth;
         $idx = $this->idx;
         echo "idx:$idx\t, d:$d, ".json_encode($new_state).PHP_EOL;
