@@ -884,6 +884,13 @@ class BinsonParser
     /*======= Private method implementations ====================================*/
     //private function advance(int $scan_flags, int $steps, string $scan_name, int $ensure_type,
     //                         callable $cb, $cb_param = null) : bool
+    public function tostr() : string
+    {
+        $str = '';
+        $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbToString'], $str);
+        return $str;
+    }
+
     public function advance_test1(int $scan_mode, ?string $scan_name, int $ensure_type,
     ?callable $cb, $cb_param = null) : bool
     {   
@@ -1071,7 +1078,7 @@ class BinsonParser
             case binson::DEF_INT16:
             case binson::DEF_INT32:
             case binson::DEF_INT64:                             
-                $size = 1 << ($byte - 14);
+                $size = 1 << ($byte - 16);
                 return ['type' => binson::TYPE_INTEGER, 'val' => $this->parseNumeric($this->consume($size))];
 
             /* string and field names processing */
@@ -1082,7 +1089,7 @@ class BinsonParser
             case binson::DEF_BYTESLEN_INT16:
             case binson::DEF_BYTESLEN_INT32:
                 $def_bytes = ($byte >= binson::DEF_BYTESLEN_INT8);
-                $len_size = 1 << ($byte - $def_bytes? 0x16 : 0x12);
+                $len_size = 1 << ($byte - $def_bytes? 0x24 : 0x20);
                 $len = $this->parseNumeric($this->consume($len_size));
 
                 if ($len < 0 || $len > binson::INT32_MAX)
@@ -1310,28 +1317,35 @@ class BinsonParser
     }
 
 
-    private function parseNumeric(string $chunk, bool $is_float)
+    private function parseNumeric(string $chunk, bool $is_float = false)
     {
         $len = strlen($chunk);
-        $unpack_code = $is_float? 'e' : 'P';
-        $val = unpack($unpack_code, $chunk);
+        $unpack_code = $is_float? 'e' : 'P';    
 
-        if ($is_float)
+        echo bin2hex($chunk).PHP_EOL;
+        $filler = chr(ord($chunk[-1]) & 0x80 ? 0xff : 0x0);
+        $chunk = str_pad($chunk, 8, $filler, STR_PAD_RIGHT);
+        echo bin2hex($chunk).PHP_EOL;
+        
+        $val = unpack($unpack_code, $chunk);
+        $v = $val[1];  // for beter code readability only        
+
+        if (is_float($v))
         {
-            if (is_float($val))
-                return $val;
+            if (is_float($v))
+                return $v;
             else
                 throw new BinsonException(binson::ERROR_FORMAT);
         }
 
-        if ($len == 1 && ($val >= binson::INT8_MIN && $val <= binson::INT8_MAX))
-            return $val;
-        else if ($len == 2 && ($val < binson::INT8_MIN || $val > binson::INT8_MAX))
-            return $val;
-        else if ($len == 4 && ($val < binson::INT16_MIN || $val > binson::INT16_MAX))
-            return $val;
-        else if ($len == 8 && ($val < binson::INT32_MIN || $val > binson::INT32_MAX))
-            return $val;
+        if ($len == 1 && ($v >= binson::INT8_MIN && $v <= binson::INT8_MAX))
+            return $v;
+        else if ($len == 2 && ($v < binson::INT8_MIN || $v > binson::INT8_MAX))
+            return $v;
+        else if ($len == 4 && ($v < binson::INT16_MIN || $v > binson::INT16_MAX))
+            return $v;
+        else if ($len == 8 && ($v < binson::INT32_MIN || $v > binson::INT32_MAX))
+            return $v;
 
         throw new BinsonException(binson::ERROR_FORMAT);
     }

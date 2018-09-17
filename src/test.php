@@ -5,11 +5,27 @@
 
 //$buf = "\x42\x42\x42\x43\x43\x42\x42\x43\x43\x43";
 //$buf = "\x42\x42\x42\x43\x43\x42\x42\x43\x43\x43";
-$buf = "\x42\x44\x42\x45\x42\x43\x43\x44\x43";
+$buf = "\x42\x12\xff\xff\xff\x7f\x43";
 
-$p = new BinsonParser($buf);
+$b = "";
+$writer = new BinsonWriter($b);
 
-$p->advance_test1(BinsonParser::ADVANCE_TRAVERSAL, null, 0, null, null);
+$src = [-123.45];
+
+$writer->put($src);
+
+echo bin2hex($b).PHP_EOL;
+$p = new BinsonParser($b);
+
+$encdec = $p->tostr();
+
+echo PHP_EOL;
+echo json_encode($src).PHP_EOL;
+echo $encdec.PHP_EOL;
+
+
+
+//$p->advance_test1(BinsonParser::ADVANCE_TRAVERSAL, null, 0, null, null);
 
 
 
