@@ -3,7 +3,10 @@ use PHPUnit\Framework\TestCase;
 
 require_once(SRC_DIR . 'binson.php');
 
-class SerializationTest extends TestCase
+/**
+* @group serializer
+*/
+class ArraySerializationTest extends TestCase
 {
     public function testPrimitive_PHP_TypeBool() 
     {
@@ -59,14 +62,7 @@ class SerializationTest extends TestCase
         $this->assertSame("\x42\x44\x43", $writer->toBytes());
     }
 
-    public function testObjectOneItem() 
-    {
-        $buf = "";
-        $writer = new BinsonWriter($buf);
 
-        $writer->put(['a' => true]);
-        $this->assertSame("\x40\x14\x01\x61\x44\x41", $writer->toBytes());
-    }
 
     public function testEmptyArray() 
     {
@@ -86,23 +82,6 @@ class SerializationTest extends TestCase
         $this->assertSame("\x42\x43\x42\x43", $writer->toBytes());
     }
 
-    public function testEmptyObject() 
-    {
-        $buf = "";
-        $writer = new BinsonWriter($buf);
-
-        $writer->put([null => null]);
-        $this->assertSame("\x40\x41", $writer->toBytes());
-    }
-
-    public function testTwoEmptyObjects() 
-    {
-        $buf = "";
-        $writer = new BinsonWriter($buf);
-
-        $writer->put([null => null], [null => null]);
-        $this->assertSame("\x40\x41\x40\x41", $writer->toBytes());
-    }
 
     public function testTwoNestedEmptyArrays() 
     {
@@ -113,24 +92,7 @@ class SerializationTest extends TestCase
         $this->assertSame("\x42\x42\x43\x43", $writer->toBytes());
     }
 
-    public function testNestedEmptyObjectInsideArray() 
-    {
-        $buf = "";
-        $writer = new BinsonWriter($buf);
 
-        $writer->put([[null=>null]]);  // [{}]
-        $this->assertSame("\x42\x40\x41\x43", $writer->toBytes());
-    }
-
-
-    public function testNestedEmptyObject() 
-    {
-        $buf = "";
-        $writer = new BinsonWriter($buf);
-
-        $writer->put(['a' => [null => null]]);
-        $this->assertSame("\x40\x14\x01\x61\x40\x41\x41", $writer->toBytes());
-    }
 
     public function testThreeNestedEmptyArrays() 
     {
@@ -159,15 +121,6 @@ class SerializationTest extends TestCase
         $this->assertSame("\x42\x42\x42\x14\x02\x78\x63\x43\x43\x14\x03\x65\x72\x72\x43", $writer->toBytes());
     }
 
-    public function testComplexObject() 
-    {
-        $buf = "";
-        $writer = new BinsonWriter($buf);
-
-        $writer->put(["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7]);
-        $this->assertSame(bin2hex("\x40\x14\x01\x61\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43\x14\x01\x62\x45\x14\x01\x63\x10\x07\x41"), bin2hex($writer->toBytes()));
-
-   } 
 
 }
 

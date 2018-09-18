@@ -13,7 +13,9 @@ $writer = new BinsonWriter($b);
 //$src = ["abc", "dcd", ["ddf",["xc"]], "err"];
 $src = [[null=>null]];
 //$src = [true];
-
+//["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7]
+// 401401614244107b140162100543 140162 45 140163 100741'
+// 401401614244107b140162100543 45 100741'
 $writer->put($src);
 echo bin2hex($b).PHP_EOL;
 
