@@ -5,8 +5,9 @@ require_once(SRC_DIR . 'binson.php');
 
 /**
 * @group lowlevel
+* @group writer
 */
-class Int16Test extends TestCase
+class Int16WriterTest extends TestCase
 {
     public function testIntegerINT16_MAX()
     {

@@ -52,6 +52,14 @@ abstract class binson {
     const ERROR_STATE          = 6;
     const ERROR_WRONG_TYPE     = 7;
     const ERROR_MAX_DEPTH      = 8;
+
+    const CFG_DEFAULT  = [
+        'max_raw_size' => 40*1000000, 
+        'max_name_len' => 1024,
+        'max_string_len' => 10240,
+        'max_bytes_len' => 10240,
+        'max_field_count' => 1000,
+    ];
 }
 
 class BinsonException extends Exception
@@ -137,11 +145,13 @@ class BinsonLogger {
 
 class BinsonWriter
 {
+    public $config;    
     private $data_len;
 	private $data;
     
     public function __construct(string &$dst = null)
     {
+        $this->config = binson::CFG_DEFAULT;
     	$this->data = &$dst ?? '';
         $this->data_len = strlen($this->data);
     }
@@ -441,15 +451,12 @@ class BinsonParserStateStack implements ArrayAccess
     }
 
     public function offsetSet($offset, $value) {
-        //$value_str = 
-
         if ($offset === null) {            
             $this->data[$this->bp->depth] = $value;
-
-            echo "State update. Depth: {$this->bp->depth}. ".json_encode($value).PHP_EOL;
+            //echo "State update. Depth: {$this->bp->depth}. ".json_encode($value).PHP_EOL;
         } else {
             $this->data[$this->bp->depth][$offset] = $value;
-            echo "State update. Depth: {$this->bp->depth}. $offset => ($value)".PHP_EOL;
+            //echo "State update. Depth: {$this->bp->depth}. $offset => ($value)".PHP_EOL;
         }
     }
 
@@ -553,10 +560,9 @@ class BinsonParser
                                     binson::TYPE_DOUBLE | binson::TYPE_STRING | binson::TYPE_BYTES;
 
     
-    const ADVANCE_ONE           = 0x01;
-    const ADVANCE_ITEM          = 0x02;
-    const ADVANCE_LEAVE_BLOCK   = 0x03;
-    const ADVANCE_TRAVERSAL     = 0x04;
+    const ADVANCE_ONE           = 0x01;  /* one step, traversal */
+    const ADVANCE_NEXT          = 0x01;  /* traversal until depth become same as initial */
+    const ADVANCE_LEAVE_BLOCK   = 0x02;  /* traversal until depth become less than initial */
 
 
     /* state transition matrix */
@@ -749,6 +755,7 @@ class BinsonParser
 
 
     /* public data members */
+    public $config;
     public $depth;
     //public $type;
 
@@ -762,6 +769,7 @@ class BinsonParser
 
     public function __construct(string &$src)
     {
+        $this->config = binson::CFG_DEFAULT;
         $this->logger = new BinsonLogger(BinsonLogger::DEBUG);
         $this->state = new BinsonParserStateStack($this);
 
@@ -817,42 +825,33 @@ class BinsonParser
 
     }
 
-
     public function goIntoObject() : BinsonParser
     {
-        $this->advance(BINSON_ADVANCE_ENTER_OBJECT);
+        $this->advance(self::ADVANCE_ONE, null, binson::TYPE_OBJECT);
         return $this;
     }
 
     public function goIntoArray() : BinsonParser
     {
-        $this->advance(BINSON_ADVANCE_ENTER_ARRAY);
+        $this->advance(self::ADVANCE_ONE, null, binson::TYPE_ARRAY);
         return $this;
     }
 
     public function leaveObject() : BinsonParser
     {   
-        $upper_idx = ($this->depth > 0) ? $this->depth-1 : 0;
-        if (!$this->state[$upper_idx]['flags'] === binson::BINSON_STATE_IN_OBJECT)
-            throw new BinsonException(binson::ERROR_STATE);
-
-        $this->advance(BINSON_ADVANCE_LEAVE_OBJECT);
+        $this->advance(self::ADVANCE_LEAVE_BLOCK);  // more checks
         return $this;
     }
 
     public function leaveArray() : BinsonParser
     {
-        $upper_idx = ($this->depth > 0) ? $this->depth-1 : 0;
-        if (!$this->state[$upper_idx]['flags'] === binson::BINSON_STATE_IN_ARRAY)
-            throw new BinsonException(binson::ERROR_STATE);
-
-        $this->advance(BINSON_ADVANCE_LEAVE_ARRAY);
+        $this->advance(self::ADVANCE_LEAVE_BLOCK);  // more checks
         return $this;
     }
 
     public function next() : BinsonParser
     {
-        $this->advance(BINSON_ADVANCE_VALUE);
+        $this->advance(self::ADVANCE_NEXT);  // more checks
         return $this;
     }
 
@@ -867,9 +866,9 @@ class BinsonParser
         if (is_null($name))
             throw new BinsonException(binson::ERROR_NULL);
 
-        while ($this->advance(BINSON_ADVANCE_VALUE, $name))
+        while ($this->advance(self::ADVANCE_NEXT, $name))  //??  why pass name to advance?
         {
-            $r = $name <=> $this->stateRef(BINSON_STATE_PREV)['name'];
+            $r = $name <=>  $this->state['name'];
             if (0 === $r)
                 return true;
             else if ($r < 0)
@@ -884,9 +883,19 @@ class BinsonParser
         return $this->state['name'];
     }
 
-    public function getValue()
+    public function getType()
     {
-        return $this->state['val'];
+        return $this->state['type'];
+    }
+
+
+    public function getValue(int $ensure_type = binson::TYPE_NONE)
+    {
+        $state = $this->state['top'];
+        if ($ensure_type != binson::TYPE_NONE && $ensure_type != $state['type']) 
+            throw new BinsonException(binson::ERROR_WRONG_TYPE);
+
+        return $state['val'];
     }
 
     public function getRaw() : string
@@ -925,8 +934,8 @@ class BinsonParser
         return true;      
     }
 
-    private function advance(int $scan_mode, ?string $scan_name, int $ensure_type,
-                             ?callable $cb, &$cb_param = null) : bool
+    private function advance(int $scan_mode, ?string $scan_name = null, int $ensure_type = null,
+                             ?callable $cb = null, &$cb_param = null) : bool
     {
         //if ($this->state->id === STATE_DONE)
         //    throw new BinsonException(binson::ERROR_STATE);
@@ -998,7 +1007,8 @@ class BinsonParser
                     // update state
                     $prev_state = $this->state['top'];
                     $this->state[] = $state_update; // copy id, type, value
-                    $cb_res = $cb($prev_state, $cb_param) ?? null;
+                    $cb_res = $cb? $cb($prev_state, $cb_param) : null;
+                    //call_user_func($cb, $prev_state, $cb_param);
                 }
 
                 // only apply to current *LEAVE* states, not to parent
@@ -1006,8 +1016,9 @@ class BinsonParser
                 {
                     $prev_state = $this->state['top'];
                     $this->state[] = $state_update;
-                    $cb_res = $cb($prev_state, $cb_param) ?? null;  // first cb call with *LEAVE* state
-                    
+                    //call_user_func($cb, $prev_state, $cb_param);
+                    //$cb_res = $cb($prev_state, $cb_param) ?? null;  // first cb call with *LEAVE* state
+                    $cb_res = $cb? $cb($prev_state, $cb_param) : null;
                     $this->depth--;
                 }
 
@@ -1015,7 +1026,9 @@ class BinsonParser
                 {
                     $prev_state = $this->state['top'];
                     $this->state[] = $state_update;
-                    $cb_res = $cb($prev_state, $cb_param) ?? null;
+                    //$cb_res = $cb($prev_state, $cb_param) ?? null;
+                    //call_user_func($cb, $prev_state, $cb_param);
+                    $cb_res = $cb? $cb($prev_state, $cb_param) : null;
                 }
             }
 
@@ -1035,6 +1048,9 @@ class BinsonParser
 
             //if ($state_update['id'] & self::STATE_MASK_CTX_UPD) 
              //   throw new Exception("no more context updates at this point"); 
+
+             if (self::ADVANCE_ONE === $scan_mode)
+                return true;
         }
     }
 
@@ -1369,6 +1385,9 @@ class BinsonParser
 
     private function consume(int $size, bool $peek = false) : string
     {
+        if ($size === 0)
+            return '';
+            
         $chunk = substr($this->data, $this->idx, $size);
         
         if (empty($chunk))

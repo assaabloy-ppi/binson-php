@@ -5,8 +5,9 @@ require_once(SRC_DIR . 'binson.php');
 
 /**
 * @group lowlevel
+* @group writer
 */
-class Int64Test extends TestCase
+class Int64WriterTest extends TestCase
 {
     public function testIntegerINT64_MAX()
     {

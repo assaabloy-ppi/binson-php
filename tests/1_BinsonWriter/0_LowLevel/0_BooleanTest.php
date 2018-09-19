@@ -5,8 +5,9 @@ require_once(SRC_DIR . 'binson.php');
 
 /**
 * @group lowlevel
+* @group writer
 */
-class BooleanTest extends TestCase
+class BooleanWriterTest extends TestCase
 {
     public function testBooleanTrue()
     {

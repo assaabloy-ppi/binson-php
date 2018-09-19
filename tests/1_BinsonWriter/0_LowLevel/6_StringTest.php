@@ -5,8 +5,9 @@ require_once(SRC_DIR . 'binson.php');
 
 /**
 * @group lowlevel
+* @group writer
 */
-class StringTest extends TestCase
+class StringWriterTest extends TestCase
 {
     public function testStringEmpty()
     {

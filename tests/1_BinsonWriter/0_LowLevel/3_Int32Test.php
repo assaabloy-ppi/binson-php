@@ -5,8 +5,9 @@ require_once(SRC_DIR . 'binson.php');
 
 /**
 * @group lowlevel
+* @group writer
 */
-class Int32Test extends TestCase
+class Int32WriterTest extends TestCase
 {
     public function testIntegerINT32_MAX()
     {

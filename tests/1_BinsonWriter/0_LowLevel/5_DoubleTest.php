@@ -5,8 +5,9 @@ require_once(SRC_DIR . 'binson.php');
 
 /**
 * @group lowlevel
+* @group writer
 */
-class DoubleTest extends TestCase
+class DoubleWriterTest extends TestCase
 {
     public function testDoublePlusZero()
     {
