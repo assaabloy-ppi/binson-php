@@ -52,6 +52,7 @@ abstract class binson {
     const ERROR_STATE          = 6;
     const ERROR_WRONG_TYPE     = 7;
     const ERROR_MAX_DEPTH      = 8;
+    const ERROR_ARG            = 9;
 
     const CFG_DEFAULT  = [
         'max_raw_size' => 40*1000000, 
@@ -80,6 +81,7 @@ class BinsonException extends Exception
             case binson::ERROR_STATE:        $msg = '[Wrong state]'; break;
             case binson::ERROR_WRONG_TYPE:   $msg = '[Wrong type]'; break;
             case binson::ERROR_MAX_DEPTH:    $msg = '[Max nesting depth reached]'; break;
+            case binson::ERROR_ARG:          $msg = '[Wrong argument]'; break;
 
             default: 
                 $msg = 'Unknown binson exception, code: ' . $exc_code; break;
@@ -783,6 +785,8 @@ class BinsonParser
         
         $this->idx = 0;
         $this->depth = 0;
+        unset($this->state);
+        $this->state = new BinsonParserStateStack($this);
         $this->state['id'] = self::STATE_UNDEFINED;
     }
 
@@ -793,18 +797,36 @@ class BinsonParser
 
     public function verify() : bool
     {
-        /*$res = false;
+        $is_valid = true;
 
-        try
-        {
+        $saved_depth = $this->depth;
+        $saved_idx = $this->idx;
+        $saved_state = $this->state;
+
+        // add validation function
+        try {
             $this->reset();
-            $res = $this->advance(BINSON_ADVANCE_VERIFY);
-            $this->reset();
+            $res = $this->advance(self::ADVANCE_ONE, null, binson::TYPE_OBJECT | binson::TYPE_ARRAY);
+            if ($res)
+                $res = $this->advance(self::ADVANCE_LEAVE_BLOCK);
         }
-        catch (Exception $ex)
-            return false;
+        catch (Error $err)
+        {
+            // write to log
+            $is_valid = false;
+        }
+        finally
+        {
+            $is_valid = $is_valid && $res && $this->isDone();
+            
+            // restore parser state
+            $this->reset();
+            $saved_depth = $this->depth;
+            $saved_idx = $this->idx;
+            $saved_state = $this->state;
 
-        return $res;*/
+            return $is_valid;
+        }
     }
 
 
@@ -858,6 +880,11 @@ class BinsonParser
     public function ensure(int $type) : bool
     {
         return $this->getType() === $type;
+    }
+
+    public function isDone() : bool
+    {
+        return $this->state['id'] === self::STATE_DONE;
     }
 
 
@@ -937,13 +964,10 @@ class BinsonParser
     private function advance(int $scan_mode, ?string $scan_name = null, int $ensure_type = null,
                              ?callable $cb = null, &$cb_param = null) : bool
     {
-        //if ($this->state->id === STATE_DONE)
-        //    throw new BinsonException(binson::ERROR_STATE);
-        
+        $orig_depth = $this->depth;
 
-
-//        if ($this->depth == 0 && $scan_mode != ADVANCE_TRAVERSAL && $scan_mode != ADVANCE_ONE)
-//            throw new BinsonException(binson::ERROR_END_OF_BLOCK);            
+        if ($this->state['id'] & (self::STATE_DONE | self::STATE_ERROR))
+            return false;
 
         while (true) {  /* scanning loop */
 
@@ -958,21 +982,6 @@ class BinsonParser
             //    if ($cmp_res > 0) /* current name is lexicographically greater than requested */
             //        throw new BinsonException(binson::BINSON_ID_PARSE_NO_FIELD_NAME);      
             //}   
-
-           // switch ($state_flags) {
-           //     case PARSER_STATE_BLOCK: /* it's time to enter current block */
-           //         $req_state['flags'] = PARSER_STATE_INBLOCK;
-           //         break;
-
-           //     case PARSER_STATE_INBLOCK_END: /* it's time to leave current block */
-           //         $req_state['flags'] = PARSER_STATE_BLOCK_END;
-           //         break;
-
-           //     default:
-           //         $req_state = $this->processOne();
-           // }
-
-            // check for default state transition, if any
 
             $state_update = $this->processOne();
 
@@ -993,11 +1002,12 @@ class BinsonParser
                     throw new BinsonException(binson::ERROR_STATE, 
                         "Missing rule for rule_no: $rule_no, type: $type_req, state: ".$this->state['id']);
                 case self::STATE_ERROR:
+                    $this->state[] = $state_update;
                     throw new BinsonException(binson::ERROR_FORMAT, $this->dump());
 
                 case self::STATE_DONE:
-                    return true;    
-                    
+                    $this->state[] = $state_update;
+                    return true;                        
                 }
 
                 if ($state_update['id'] & self::STATE_MASK_ENTER)
@@ -1049,8 +1059,20 @@ class BinsonParser
             //if ($state_update['id'] & self::STATE_MASK_CTX_UPD) 
              //   throw new Exception("no more context updates at this point"); 
 
-             if (self::ADVANCE_ONE === $scan_mode)
+            switch ($scan_mode) {
+            case self::ADVANCE_ONE:
                 return true;
+            case self::ADVANCE_LEAVE_BLOCK:                
+                if ($this->depth === 0 || $this->depth < $orig_depth)
+                    return true;
+                break;
+            case self::ADVANCE_NEXT:
+                if ($this->depth === $orig_depth)
+                    return true;
+                break;
+            default:
+                throw new BinsonException(binson::ERROR_ARG);
+            }                
         }
     }
 
@@ -1387,7 +1409,7 @@ class BinsonParser
     {
         if ($size === 0)
             return '';
-            
+
         $chunk = substr($this->data, $this->idx, $size);
         
         if (empty($chunk))
