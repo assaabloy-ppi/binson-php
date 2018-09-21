@@ -14,5 +14,12 @@
 
     echo "done:".(int)$parser->isDone();
 
+  /*  {"A":"B"} 
+   uint8_t buffer[8] = {
+    0x40,
+    0x14, 0x01, 0x41, 0x14, 0x01, 0x42,
+    0x41*/
+};
+
 ?>
 

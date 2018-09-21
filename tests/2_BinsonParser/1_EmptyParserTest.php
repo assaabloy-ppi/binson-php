@@ -79,7 +79,47 @@ class SimpleParserTest extends TestCase
             $this->assertSame(true, $parser->verify());        
     }
 
-    public function testObjectNested3Empty()
+    public function testObjectNested4EmptyWithEmptyNames()
+    { 
+        $buf = "\x40\x14\x00\x40\x14\x00\x40\x14\x00\x40\x41\x41\x41\x41";  // {"":{"":{"":{}}}}
+        $parser = new BinsonParser($buf);
+
+            $this->assertSame(0, $parser->depth);
+        $parser->goIntoObject();
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
+        $parser->next();
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame("", $parser->getName());
+        $parser->goIntoObject();
+            $this->assertSame(2, $parser->depth);
+            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
+        $parser->next();
+            $this->assertSame(2, $parser->depth);
+            $this->assertSame("", $parser->getName());
+        $parser->goIntoObject();
+            $this->assertSame(3, $parser->depth);
+            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
+        $parser->next();
+            $this->assertSame(3, $parser->depth);
+            $this->assertSame("", $parser->getName());
+        $parser->goIntoObject();
+            $this->assertSame(4, $parser->depth);
+            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
+        $parser->leaveArray();            
+            $this->assertSame(3, $parser->depth);
+        $parser->leaveArray();
+            $this->assertSame(2, $parser->depth);
+        $parser->leaveArray();
+            $this->assertSame(1, $parser->depth);
+        $parser->leaveArray();
+            $this->assertSame(0, $parser->depth);
+            $this->assertSame(true, $parser->isDone());
+            $this->assertSame(true, $parser->verify());        
+    }
+
+
+    public function testObjectNested3EmptyWithNames()
     { 
         $buf = "\x40\x14\x01\x61\x40\x14\x01\x62\x40\x41\x41\x41";  // {'a':{'b':{}}}
         $parser = new BinsonParser($buf);
@@ -175,7 +215,31 @@ class SimpleParserTest extends TestCase
     }    
     
 
-
+  // {"A":{"A":{"A":{"A":{"A":{}}}}}, "B":1} 
+/*  uint8_t buffer[] = {
+    0x40,
+    0x14, 0x01, 0x41,
+        0x40,
+            0x14, 0x01, 0x41,
+                0x40,
+                    0x14, 0x01, 0x41,
+                        0x40,
+                            0x14, 0x01, 0x41,
+                                0x40,
+                                    0x14, 0x01, 0x41,
+                                    0x14, 0x01, 0x41,
+                                0x41,
+                        0x41,
+                0x41,
+        0x41,
+    0x14, 0x01, 0x42, 0x10, 0x01,
+    0x41
+};
+ASSERT_TRUE(binson_parser_init(&p, buffer, sizeof(buffer)));
+ASSERT_TRUE(binson_parser_verify(&p));
+ASSERT_TRUE(binson_parser_go_into_object(&p));
+ASSERT_TRUE(binson_parser_field_ensure(&p, "B", BINSON_TYPE_INTEGER));
+*/
 }
 
 ?>
