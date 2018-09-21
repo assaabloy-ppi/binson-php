@@ -2,14 +2,13 @@
 
  include_once __DIR__.'/binson.php';
 
-    $buf = "\x40\x14\x01\x61\x40\x41\x41";  // {'a':{}}
+  $buf = "\x42\x42\x43\x42\x43\x43";  // [[],[]]
     $parser = new BinsonParser($buf);
 
-
-    $parser->goIntoObject();
+    $parser->goIntoArray();
     $parser->next();
-    echo "name:".$parser->getName();
-    $parser->goIntoObject();
+    $parser->next();
+    $parser->goIntoArray();
     $parser->leaveArray();
     $parser->leaveArray();
 

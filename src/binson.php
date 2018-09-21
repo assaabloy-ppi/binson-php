@@ -556,6 +556,11 @@ class BinsonParser
                                       self::STATE_AT_ITEM_KEY_ | self::STATE_IN_OBJECT_END_ |
                                       self::STATE_IN_ARRAY_END_;
 
+    /* states are ok to stop on, when ADVANCE_NEXT is applied  */
+    private const STATE_MASK_NEXT = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
+                                    self::STATE_AT_VALUE  |
+                                    self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
+
     private const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR | self::STATE_NO_RULE;
 
     /////////////
@@ -592,11 +597,11 @@ class BinsonParser
     //const TYPE_MASK_VALUE         = 0x01f0;
     const TYPE_MASK_VALUE     = binson::TYPE_BOOLEAN | binson::TYPE_INTEGER |
                                 binson::TYPE_DOUBLE | binson::TYPE_STRING | binson::TYPE_BYTES;
-
     
+
     const ADVANCE_ONE           = 0x01;  /* one step, traversal */
-    const ADVANCE_NEXT          = 0x01;  /* traversal until depth become same as initial */
-    const ADVANCE_LEAVE_BLOCK   = 0x02;  /* traversal until depth become less than initial */
+    const ADVANCE_NEXT          = 0x02;  /* traversal until depth become same as initial */
+    const ADVANCE_LEAVE_BLOCK   = 0x04;  /* traversal until depth become less than initial */
 
     /* Priority=2. Default state transition matrix */
     private const BLOCK_TYPE_TO_STATE_MX = [
@@ -976,7 +981,7 @@ class BinsonParser
                                                            [$this->getBlockType()];
 
             //echo $pad."try NEW_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']]."][".
-            ///        self::DBG_INT_TO_STATE_MAP[$state['id']]."][".
+            //        self::DBG_INT_TO_STATE_MAP[$state['id']]."][".
             //        binson::DBG_INT_TO_TYPE_MAP[$this->getBlockType()]." -> ".
             //        self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
 
@@ -985,9 +990,9 @@ class BinsonParser
                 if (isset(self::NEW_TYPE_TO_STATE_MX[$state_update['type']][$state['id']]))
                     $new_state_id = self::NEW_TYPE_TO_STATE_MX[$state_update['type']][$state['id']];
 
-             //   echo $pad."try NEW_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']].
-             //                       "][".self::DBG_INT_TO_STATE_MAP[$state['id']]
-             //                       ."] -> ".self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
+            //    echo $pad."try NEW_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']].
+            //                        "][".self::DBG_INT_TO_STATE_MAP[$state['id']]
+            //                        ."] -> ".self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
             }
             $state_update['id'] = $new_state_id;
         }
@@ -1101,9 +1106,9 @@ class BinsonParser
                     if ($this->depth === 0 || $this->depth < $orig_depth)
                         return true;
                     break;
-                case self::ADVANCE_NEXT:
-                    if ($this->depth === $orig_depth)
-                        return true;
+                case self::ADVANCE_NEXT:                
+                    if ($this->state['id'] & self::STATE_MASK_NEXT && $this->depth === $orig_depth)
+                            return true;
                     break;
                 default:
                     throw new BinsonException(binson::ERROR_ARG);
