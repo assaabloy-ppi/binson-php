@@ -963,7 +963,7 @@ class BinsonParser
 
     private function requestStateTransition() : array
     {
-        $pad = "d:{$this->depth} ".str_repeat(" ", $this->depth * 5);   /* DBG */
+        //$pad = "d:{$this->depth} ".str_repeat(" ", $this->depth * 5);   /* DBG */
 
         $state = $this->state['top'];
         $state_update = [];
@@ -1013,6 +1013,10 @@ class BinsonParser
 
         if ($state_update['id'] & self::STATE_AT_ITEM_KEY_)
             $state_update['name'] = $state_update['val'];
+
+        //if ($state_update['id'] & self::STATE_AT_VALUE)
+        //    $state_update[''] = $state_update['val'];
+    
 
         //echo $pad."requestStateTransition() -> ".json_encode($state_update).PHP_EOL;
         //echo $pad."-------------------------------".PHP_EOL;
@@ -1068,14 +1072,14 @@ class BinsonParser
                 case self::STATE_AT_OBJECT_:
                 case self::STATE_AT_ARRAY_:
                 case self::STATE_AT_ITEM_KEY_:
-
+                case self::STATE_AT_VALUE:
                 case self::STATE_IN_OBJECT_END_:
                 case self::STATE_IN_ARRAY_END_:                
                     break;
 
                 case self::STATE_AT_VALUE:
                     //$update_req['val'] = $update_req['val'];
-                    //$this->state[] = $update_req;
+                    //$this->state[] = $update_req;    
                     break;
 
                 case self::STATE_IN_OBJECT_BEGIN:

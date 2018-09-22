@@ -25,26 +25,28 @@ class NavigationParserTest extends TestCase
             $this->assertSame(true, $parser->verify());
     }
 
-
-
-
     /*public function testLinearFieldSearch()
     {
-        $buf = "\x40\x14\x01\x61\x40\x14\x01\x61\x45\x41\x41";  // {'a':{'a':false}}
+        $buf = "\x40\x14\x01\x61\x45\x14\x01\x62\x44\x14\x01\x63\x45\x41";  // {'a':false, 'b':true, 'c':false}
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
         $parser->goIntoObject();
             $this->assertSame(1, $parser->depth);
-            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());                        
+            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());
         $parser->field("a");
             $this->assertSame(1, $parser->depth);
             $this->assertSame("a", $parser->getName());
-        $parser->goIntoObject();
-            $parser->field("a");
-            $this->assertSame(2, $parser->depth);
             //$this->assertSame(binson::TYPE_BOOLEAN, $parser->getType());
             $this->assertSame(false, $parser->getValue());
+
+        $parser->field("c");
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame("c", $parser->getName());
+            $this->assertSame(binson::TYPE_BOOLEAN, $parser->getType());
+            $this->assertSame(false, $parser->getValue());
+
+            $this->assertSame(false, $parser->field("d"));  // no field
 
             $this->assertSame(true, $parser->verify());  
 } */

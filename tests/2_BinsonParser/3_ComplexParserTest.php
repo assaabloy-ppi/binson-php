@@ -1,3 +1,11 @@
+// {"a":[true,123,"b",5],"b":false,"c":7}
+  const char b1s[]  = "{\"a\":[true,123,\"b\",5],\"b\":false,\"c\":7}";
+  const uint8_t b1[]  = "\x40\x14\x01\x61\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43\x14\x01\x62\x45\x14\x01\x63\x10\x07\x41";
+  char strbuf[sizeof(b1s)];
+
+
+
+
 /*TEST(verify_complex_object)
 {
     /*
@@ -74,3 +82,18 @@
     */
 
     // {"b":[true,13,"cba",{"abc":false, "b":"0x008100ff00", "cba":"abc"},9223372036854775807]}  
+
+
+      // {"a":[{"d":false},{"e":true},9223372036854775807]}
+  const uint8_t b1[]  =
+    "\x40\x14\x01\x61"
+        "\x42"
+           "\x40"
+                "\x14\x01\x64\x45"
+            "\x41"
+            "\x40"
+                "\x14\x01\x65\x44"
+            "\x41"
+            "\x13\xff\xff\xff\xff\xff\xff\xff\x7f"
+       "\x43"
+    "\x41";
