@@ -72,3 +72,5 @@
     ASSERT_TRUE(binson_parser_field_ensure(&p, "C", BINSON_TYPE_OBJECT));
 
     */
+
+    // {"b":[true,13,"cba",{"abc":false, "b":"0x008100ff00", "cba":"abc"},9223372036854775807]}  

@@ -561,6 +561,9 @@ class BinsonParser
                                     self::STATE_AT_VALUE  |
                                     self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
 
+    // EndOfBlock                                        
+    private const STATE_MASK_EOB = self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
+
     private const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR | self::STATE_NO_RULE;
 
     /////////////
@@ -864,10 +867,10 @@ class BinsonParser
         return $this;
     }
 
-    public function next() : BinsonParser
+    public function next() : bool
     {
-        $this->advance(self::ADVANCE_NEXT);  // more checks
-        return $this;
+        return $this->advance(self::ADVANCE_NEXT);  // more checks
+        //return $this;
     }
 
     public function ensure(int $type) : bool
@@ -1065,9 +1068,14 @@ class BinsonParser
                 case self::STATE_AT_OBJECT_:
                 case self::STATE_AT_ARRAY_:
                 case self::STATE_AT_ITEM_KEY_:
-                case self::STATE_AT_VALUE:
+
                 case self::STATE_IN_OBJECT_END_:
                 case self::STATE_IN_ARRAY_END_:                
+                    break;
+
+                case self::STATE_AT_VALUE:
+                    //$update_req['val'] = $update_req['val'];
+                    //$this->state[] = $update_req;
                     break;
 
                 case self::STATE_IN_OBJECT_BEGIN:
@@ -1108,7 +1116,7 @@ class BinsonParser
                     break;
                 case self::ADVANCE_NEXT:                
                     if ($this->state['id'] & self::STATE_MASK_NEXT && $this->depth === $orig_depth)
-                            return true;
+                            return ($this->state['id'] & self::STATE_MASK_EOB) ? false : true;
                     break;
                 default:
                     throw new BinsonException(binson::ERROR_ARG);

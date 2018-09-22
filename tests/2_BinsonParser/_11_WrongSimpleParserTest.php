@@ -15,4 +15,13 @@ class WrongSimpleParserTest extends TestCase
         $this->assertSame(false, $parser->verify());
     }    
 
+    public function test_AFL_Reported1()
+    { 
+        $buf = "\x40\x19\xd3\x03\x41";
+        $parser = new BinsonParser($buf);
+        $this->assertSame(false, $parser->verify());
+
+        
+    }    
+
 }

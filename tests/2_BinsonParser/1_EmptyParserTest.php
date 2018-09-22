@@ -150,6 +150,58 @@ class SimpleParserTest extends TestCase
             $this->assertSame(true, $parser->verify());        
     }
 
+    public function testObjectWith3NestedEmptyArrays()
+    { 
+        $buf = "\x40\x14\x01\x62\x42\x42\x42\x43\x43\x43\x41";  // {"b":[[[]]]}
+        $parser = new BinsonParser($buf);
+
+            $this->assertSame(0, $parser->depth);
+        $parser->goIntoObject();
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
+        $parser->next();
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame("b", $parser->getName());
+        $parser->goIntoArray();
+        $parser->goIntoArray();
+        $parser->goIntoArray();
+            $this->assertSame(binson::TYPE_ARRAY, $parser->getType());            
+            $this->assertSame(4, $parser->depth);
+        $parser->leaveArray();
+        $parser->leaveArray();
+        $parser->leaveArray();
+            $this->assertSame(1, $parser->depth);
+        $parser->leaveObject();            
+            $this->assertSame(0, $parser->depth);
+            $this->assertSame(true, $parser->isDone());
+            $this->assertSame(true, $parser->verify());        
+    }
+
+    
+    public function testObjectWithNestsedMultiEmpty()
+    { 
+        $buf = "\x40\x14\x01\x62\x42\x42\x40\x41\x43\x42\x40\x41\x43\x43\x41";  // {"b":[[{}],[{}]]} 
+        $parser = new BinsonParser($buf);
+
+            $this->assertSame(0, $parser->depth);
+        $parser->goIntoObject();
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
+        $parser->next();
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame("b", $parser->getName());
+        $parser->goIntoArray();
+            $parser->next();
+            $parser->next();
+            $parser->goIntoArray();
+            $parser->goIntoObject();
+        $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
+            $this->assertSame(4, $parser->depth);
+
+            $this->assertSame(false, $parser->isDone());
+            $this->assertSame(true, $parser->verify());        
+    }    
+
 
     public function testArraysNestsed3Empty()
     { 
