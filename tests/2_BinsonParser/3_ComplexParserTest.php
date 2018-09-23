@@ -1,10 +1,42 @@
-// {"a":[true,123,"b",5],"b":false,"c":7}
-  const char b1s[]  = "{\"a\":[true,123,\"b\",5],\"b\":false,\"c\":7}";
-  const uint8_t b1[]  = "\x40\x14\x01\x61\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43\x14\x01\x62\x45\x14\x01\x63\x10\x07\x41";
-  char strbuf[sizeof(b1s)];
+<?php
+use PHPUnit\Framework\TestCase;
 
+require_once(SRC_DIR . 'binson.php');
 
+/**
+* @group parser
+*/
+class ComplexParserTest extends TestCase
+{
+    public function testMinimalComplex()
+    { 
+        // {"a":[true,123,"b",5],"b":false,"c":7}
+        $buf = "\x40\x14\x01\x61\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43\x14\x01\x62\x45\x14\x01\x63\x10\x07\x41";
+        $parser = new BinsonParser($buf);
+        
+        $parser->goIntoObject();
+        $parser->field("a");
+        $parser->goIntoArray();
+        $parser->next();
+        $this->assertSame(true, $parser->getValue(binson::TYPE_BOOLEAN));
+        $parser->next();
+        $this->assertSame(123, $parser->getValue(binson::TYPE_INTEGER));
+        $parser->next();
+        $this->assertSame("b", $parser->getValue(binson::TYPE_STRING));
+        $parser->leaveArray();
+        $parser->next();
+        $this->assertSame("b", $parser->getName());
+        $this->assertSame(false, $parser->getValue(binson::TYPE_BOOLEAN));
+        $parser->field("c");
+        $this->assertSame(7, $parser->getValue(binson::TYPE_INTEGER));
+        $parser->leaveObject();
 
+        $this->assertSame(true, $parser->isDone());
+        $this->assertSame(true, $parser->verify()); 
+      }
+  
+}
+?>
 
 /*TEST(verify_complex_object)
 {

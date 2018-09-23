@@ -2,17 +2,34 @@
 
  include_once __DIR__.'/binson.php';
 
- // {'a':false, 'b':true, 'c':false}
- $buf = "\x40\x14\x01\x61\x45\x14\x01\x62\x44\x14\x01\x63\x45\x41";  
+  // {"a":[true,123,"b",5],"b":false,"c":7}
+$buf = "\x40\x14\x01\x61\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43\x14\x01\x62\x45\x14\x01\x63\x10\x07\x41";
 $parser = new BinsonParser($buf);
 
-        $parser->goIntoObject();
-        $parser->field("a");
-        $type = $parser->getType();
-        $val = $parser->getValue();
+$parser->goIntoObject();
+$parser->field("a");
+$parser->goIntoArray();
+$parser->next();
 
-        echo "t:{$type}, v:{$val}: ".PHP_EOL;
+$out = [];
+$out[] = $parser->getValue(binson::TYPE_BOOLEAN);
+$parser->next();
+$out[] = $parser->getValue(binson::TYPE_INTEGER);
+$parser->next();
+$out[] = $parser->getValue(binson::TYPE_STRING);
+$parser->leaveArray();
+$parser->field("c");
+$out[] = $parser->getName();
+$out[] = $parser->getValue(binson::TYPE_INTEGER);
+$parser->leaveObject();
+$out[] = $parser->isDone();
+//$out[] = $parser->verify();
         
+echo implode(PHP_EOL, $out);
+
+
+
+
         //echo "done:".(int)$parser->isDone();
 
   /*  {"A":"B"} 
