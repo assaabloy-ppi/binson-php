@@ -518,7 +518,7 @@ class BinsonParser
         0x0001 => 'STATE_UNDEFINED',
         0x0002 => 'STATE_AT_OBJECT_',
         0x0004 => 'STATE_AT_ARRAY_',
-        0x0008 => 'STATE_AT_ITEM_KEY_',
+        0x0008 => 'STATE_AT_ITEM_KEY',
         0x0010 => 'STATE_AT_VALUE',
         0x0020 => 'STATE_IN_OBJECT_BEGIN',
         0x0040 => 'STATE_IN_OBJECT_END_',
@@ -536,7 +536,7 @@ class BinsonParser
     private const STATE_UNDEFINED       = 0x0001;  // before any parsing
     private const STATE_AT_OBJECT_      = 0x0002;  // positioned at object start
     private const STATE_AT_ARRAY_       = 0x0004;  // positioned at array start
-    private const STATE_AT_ITEM_KEY_    = 0x0008;  // positioned at "name" of "name:value" pair
+    private const STATE_AT_ITEM_KEY     = 0x0008;  // positioned at "name" of "name:value" pair
     private const STATE_AT_VALUE        = 0x0010;  // positioned at primitive value of array or "name:value" pair
     private const STATE_IN_OBJECT_BEGIN = 0x0020;  // just entered current object
     private const STATE_IN_OBJECT_END_  = 0x0040;  // end of object detected    
@@ -549,12 +549,12 @@ class BinsonParser
     private const STATE_ERROR           = 0x1000;
     private const STATE_NO_RULE         = 0x2000;  // missing state transition rule
 
-    private const STATE_MASK_NEED_INPUT = self::STATE_UNDEFINED | self::STATE_AT_VALUE |
+    private const STATE_MASK_NEED_INPUT = self::STATE_UNDEFINED | 
+                                          self::STATE_AT_VALUE | self::STATE_AT_ITEM_KEY | 
                                           self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN |
                                           self::STATE_OUTOF_OBJECT | self:: STATE_OUTOF_ARRAY;
     private const STATE_MASK_HELPER = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
-                                      self::STATE_AT_ITEM_KEY_ | self::STATE_IN_OBJECT_END_ |
-                                      self::STATE_IN_ARRAY_END_;
+                                      self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
 
     /* states are ok to stop on, when ADVANCE_NEXT is applied  */
     private const STATE_MASK_NEXT = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
@@ -620,14 +620,14 @@ class BinsonParser
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
             self::STATE_AT_OBJECT_       =>  self::STATE_IN_OBJECT_BEGIN,
             self::STATE_AT_ARRAY_        =>  self::STATE_IN_ARRAY_BEGIN,
-            self::STATE_AT_ITEM_KEY_     =>  self::STATE_AT_VALUE,
-            self::STATE_AT_VALUE         =>  self::STATE_AT_ITEM_KEY_,
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_AT_ITEM_KEY_,
+            self::STATE_AT_ITEM_KEY      =>  self::STATE_AT_VALUE,
+            self::STATE_AT_VALUE         =>  self::STATE_AT_ITEM_KEY,
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_AT_ITEM_KEY,
             self::STATE_IN_OBJECT_END_   =>  self::STATE_OUTOF_OBJECT,
             self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_ERROR,
             self::STATE_IN_ARRAY_END_    =>  self::STATE_ERROR,
-            self::STATE_OUTOF_OBJECT    =>  self::STATE_AT_ITEM_KEY_,
-            self::STATE_OUTOF_ARRAY     =>  self::STATE_AT_ITEM_KEY_,          
+            self::STATE_OUTOF_OBJECT    =>  self::STATE_AT_ITEM_KEY,
+            self::STATE_OUTOF_ARRAY     =>  self::STATE_AT_ITEM_KEY,          
             self::STATE_DONE            =>  self::STATE_DONE,
             self::STATE_ERROR           =>  self::STATE_ERROR
         ],
@@ -635,7 +635,7 @@ class BinsonParser
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
             self::STATE_AT_OBJECT_       =>  self::STATE_IN_OBJECT_BEGIN,
             self::STATE_AT_ARRAY_        =>  self::STATE_IN_ARRAY_BEGIN,
-            self::STATE_AT_ITEM_KEY_     =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
             self::STATE_AT_VALUE         =>  self::STATE_AT_VALUE,
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
             self::STATE_IN_OBJECT_END_   =>  self::STATE_ERROR,
@@ -652,6 +652,7 @@ class BinsonParser
     private const NEW_TYPE_TO_STATE_MX = [   
         binson::TYPE_OBJECT => [
             self::STATE_UNDEFINED       =>  self::STATE_AT_OBJECT_,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_OBJECT_,
             self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_OBJECT_,
                                                 binson::TYPE_ARRAY  => self::STATE_AT_OBJECT_],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
@@ -663,6 +664,7 @@ class BinsonParser
         ],                            
         binson::TYPE_OBJECT_END => [
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
             self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_IN_OBJECT_END_,      
                                                 binson::TYPE_ARRAY  => self::STATE_ERROR],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_IN_OBJECT_END_,
@@ -674,6 +676,7 @@ class BinsonParser
         ],                
         binson::TYPE_ARRAY => [
             self::STATE_UNDEFINED       =>  self::STATE_AT_ARRAY_,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_ARRAY_,
             self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_ARRAY_,
                                              binson::TYPE_ARRAY  => self::STATE_AT_ARRAY_],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
@@ -685,6 +688,7 @@ class BinsonParser
         ],
         binson::TYPE_ARRAY_END => [
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
             self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
                                              binson::TYPE_ARRAY  => self::STATE_IN_ARRAY_END_],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
@@ -696,6 +700,7 @@ class BinsonParser
         ],
         binson::TYPE_BOOLEAN => [// same as bool, int, double, bytes
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
             self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
                                              binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
@@ -707,6 +712,7 @@ class BinsonParser
         ],
         binson::TYPE_INTEGER => [// same as bool, int, double, bytes
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
             self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
                                              binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
@@ -718,6 +724,7 @@ class BinsonParser
         ],                            
         binson::TYPE_DOUBLE => [// same as bool, int, double, bytes
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
             self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
                                              binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
@@ -729,17 +736,19 @@ class BinsonParser
         ],
         binson::TYPE_STRING => [
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY_,      
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
                                              binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_AT_ITEM_KEY_,
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_AT_ITEM_KEY,
             self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY_,      
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
                                              binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY_,      
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
                                              binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
         ],
         binson::TYPE_BYTES => [ // same as bool, int, double, bytes
             self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
             self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
                                              binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
@@ -1011,7 +1020,7 @@ class BinsonParser
             $state_update['id'] = $new_state_id;
         }
 
-        if ($state_update['id'] & self::STATE_AT_ITEM_KEY_)
+        if ($state_update['id'] & self::STATE_AT_ITEM_KEY)
             $state_update['name'] = $state_update['val'];
 
         //if ($state_update['id'] & self::STATE_AT_VALUE)
@@ -1071,7 +1080,7 @@ class BinsonParser
 
                 case self::STATE_AT_OBJECT_:
                 case self::STATE_AT_ARRAY_:
-                case self::STATE_AT_ITEM_KEY_:
+                case self::STATE_AT_ITEM_KEY:
                 case self::STATE_AT_VALUE:
                 case self::STATE_IN_OBJECT_END_:
                 case self::STATE_IN_ARRAY_END_:                
