@@ -19,7 +19,7 @@ Current status
 * (De-)serialization is NOT ready to use (some issue fixes required).
 * `binson_encode()` and `binson_decode()` API calls are NOT ready.
 * Major code cleanups required
-* Major code documentation required (? follow [WordPress inline docsumentation best practices](https://make.wordpress.org/core/handbook/best-practices/inline-documentation-standards/php/))
+* Major code documentation required (? follow [WordPress inline documentation best practices](https://make.wordpress.org/core/handbook/best-practices/inline-documentation-standards/php/))
 * Unit test coverage improvement is still required.
 * Logging/debug output standartization required.
 
