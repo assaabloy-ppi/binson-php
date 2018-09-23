@@ -1,6 +1,5 @@
 <?php declare(strict_types=1);
 
-
 abstract class binson {
     const BINSON_API_VERSION = 'binson_php_v0.0.1a';
 
@@ -106,26 +105,6 @@ class BinsonException extends Exception
     }
 }
 
-/*class BinsonParserException extends BinsonException
-{
-    public function __construct($code, BinsonParser $bp, $message = "", Throwable $previous = null)
-    {
-        $msg = '';
-        
-        switch ($code) {
-        case binson::ERROR_FORMAT:
-            $msg = "Parsing failure at index: ".$bp->idx;
-            break;
-       }
-
-       $msg .= $message? ' Details: ' . $message : '';
-       parent::__construct($code, $msg, $previous);
-    }    
-}*/
-
-
-
-
 class BinsonLogger {
 
     const EMERGENCY = 1;
@@ -156,7 +135,6 @@ class BinsonLogger {
     }
 
 };
-
 
 
 class BinsonWriter
@@ -483,31 +461,6 @@ class BinsonParserStateStack implements ArrayAccess
     public function offsetUnset($offset) {
         unset($this->data[$this->bp->depth][$offset]);
     }
-
-/*    public function __get( $key )
-    {
-        list($dd, $k) = $this->parseKey($key);
-        $d = $bp->depth + $dd;
-        //if ($d < 0)
-        //    throw new BinsonException();
-
-        return $this->stack[$d][$k];
-    }
-
-    public function __set( $key, $value )
-    {
-        if (empty($key))
-            $this->stack[$bp->depth] = $value;
-        else
-            $this->stack[$bp->depth][$key] = $value;
-    }
-
-    private function parseKey($key)
-    {
-        $chunks = explode(".", $key);
-        return ($chunks[0] === 'prev' && count($chunks) == 2)? ['dd'=>-1, 'k'=>$chunks[1]] : ['dd'=>0, 'k'=>$key];
-    }
-*/
 }
 
 
@@ -566,38 +519,6 @@ class BinsonParser
 
     private const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR | self::STATE_NO_RULE;
 
-    /////////////
-    /*private const STATE_UNDEFINED              = 0x0000;
-    private const STATE_ENTER_OBJECT           = 0x0001;
-    private const STATE_IN_OBJ_FIELD = 0x0002;
-    private const STATE_IN_OBJ_VALUE = 0x0004;
-    //const STATE_IN_OBJECT              = STATE_IN_OBJ_FIELD | STATE_IN_OBJ_VALUE;//0x0003;
-    private const STATE_LEAVE_OBJECT           = 0x0008;
-    private const STATE_ENTER_ARRAY            = 0x0010;
-    private const STATE_IN_ARRAY               = 0x0020;
-    private const STATE_IN_ARRAY_AT_VAL        = 0x0040;
-    private const STATE_LEAVE_ARRAY            = 0x0080;
-
-    private const STATE_MASK_OBJECT    = self::STATE_ENTER_OBJECT | self::STATE_IN_OBJ_FIELD |
-                                         self::STATE_IN_OBJ_VALUE | self::STATE_LEAVE_OBJECT; 
-    private const STATE_MASK_ARRAY     = self::STATE_ENTER_ARRAY |
-                                         self::STATE_IN_ARRAY | self::STATE_LEAVE_ARRAY;
-
-
-    private const STATE_MASK_AT_BLOCK     = self::STATE_ENTER_ARRAY | self::STATE_ENTER_OBJECT;
-    private const STATE_MASK_LEAVE     = self::STATE_LEAVE_ARRAY | self::STATE_LEAVE_OBJECT;
-
-
-
-    private const STATE_MASK_INNER   = self::STATE_IN_OBJ_VALUE | self::STATE_IN_ARRAY | 
-                                       self::STATE_IN_ARRAY_AT_VAL;
-
-    
-    private const STATE_MASK_CTX_UPD   = self::STATE_MASK_AT_BLOCK | self::STATE_MASK_LEAVE;
-*/
-    
-    //const TYPE_FIELD              = 0x0200;
-    //const TYPE_MASK_VALUE         = 0x01f0;
     const TYPE_MASK_VALUE     = binson::TYPE_BOOLEAN | binson::TYPE_INTEGER |
                                 binson::TYPE_DOUBLE | binson::TYPE_STRING | binson::TYPE_BYTES;
     
@@ -834,24 +755,6 @@ class BinsonParser
         }
     }
 
-
-    public function parse( $cb ) : bool
-    {
-
-    }
-
-
-    public function toJSON( bool $nice = false) : string
-    {
-
-    }
-
-
-    public function toArray() : array
-    {
-
-    }
-
     public function enterObject() : BinsonParser
     {
         $this->advance(self::ADVANCE_ONE, null, binson::TYPE_OBJECT);
@@ -879,7 +782,6 @@ class BinsonParser
     public function next() : bool
     {
         return $this->advance(self::ADVANCE_NEXT);  // more checks
-        //return $this;
     }
 
     public function ensure(int $type) : bool
@@ -891,7 +793,6 @@ class BinsonParser
     {
         return $this->state['id'] === self::STATE_DONE;
     }
-
 
     public function field(string $name) : bool
     {        
@@ -941,33 +842,11 @@ class BinsonParser
 
 
     /*======= Private method implementations ====================================*/
-    //private function advance(int $scan_flags, int $steps, string $scan_name, int $ensure_type,
-    //                         callable $cb, $cb_param = null) : bool
     public function tostr() : string
     {
         $str = '';
         $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbToString'], $str);
         return $str;
-    }
-
-    public function advance_test1(int $scan_mode, ?string $scan_name, int $ensure_type,
-    ?callable $cb, $cb_param = null) : bool
-    {   
-        
-        //$this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbDebug1'], null);
-        
-        $str = '';
-        $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbToString'], $str);
-        echo "'".$str."'".PHP_EOL; 
-
-        /*
-        $data = [];
-        $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbDeserializer'], $data);
-        print_r($data['data']);
-        echo json_encode($data['data']);
-        */
-
-        return true;      
     }
 
     private function requestStateTransition() : array
@@ -1048,18 +927,6 @@ class BinsonParser
         while (true) {  /* scanning loop */
             if ($this->state['id'] & self::STATE_MASK_EXIT)
                 return false;
-
-            /* context checks for field name search */
-            //if ($state_flags != PARSER_STATE_NAME && $this->isInObject()
-            //    && ($scan_flag & PARSER_ADVANCE_CMP_NAME) && $this->depth == $orig_depth) 
-            //{
-            //    $cmp_res = $this->stateRef(BINSON_STATE_PREV)['name'] <=> $scan_name;
-            //    if ($cmp_res == 0) {
-            //        return $this->ensureFilter($scan_flag, $ensure_type);
-            //    }
-            //    if ($cmp_res > 0) /* current name is lexicographically greater than requested */
-            //        throw new BinsonException(binson::BINSON_ID_PARSE_NO_FIELD_NAME);      
-            //}   
             
             $state_req = $this->requestStateTransition();
             $update_req = array_replace($this->state['top'], $state_req);
@@ -1112,7 +979,6 @@ class BinsonParser
 
                 if (!$cb_called)
                     $this->callbackWrapper($cb, $update_req, $cb_param);
-
     
                 switch ($scan_mode) {
                 case self::ADVANCE_ONE:
@@ -1358,34 +1224,11 @@ class BinsonParser
 
     private function cbDebug1(array $prev_state, &$param = null) : bool
     {
-        /*switch ($this->state['id']) {
-            self::STATE
-        }*/
-        $new_state = $this->state['top'];
-        $d = $this->depth;
-        $idx = $this->idx;
+        //$new_state = $this->state['top'];
+        //$d = $this->depth;
+        //$idx = $this->idx;
         //echo "idx:$idx\t, d:$d, ".json_encode($new_state).PHP_EOL;
         return true;
-
-/*        private const STATE_UNDEFINED              = 0x0000;
-        private const STATE_ENTER_OBJECT           = 0x0001;
-        private const STATE_IN_OBJ_FIELD = 0x0002;
-        private const STATE_IN_OBJ_VALUE = 0x0004;
-        //const STATE_IN_OBJECT              = STATE_IN_OBJ_FIELD | STATE_IN_OBJ_VALUE;//0x0003;
-        private const STATE_LEAVE_OBJECT           = 0x0008;
-        private const STATE_ENTER_ARRAY            = 0x0010;
-        private const STATE_IN_ARRAY               = 0x0020;
-        private const STATE_LEAVE_ARRAY            = 0x0040;
-    
-        private const STATE_MASK_OBJECT    = self::STATE_ENTER_OBJECT | self::STATE_IN_OBJ_FIELD |
-                                             self::STATE_IN_OBJ_VALUE | self::STATE_LEAVE_OBJECT; 
-        private const STATE_MASK_ARRAY     = self::STATE_ENTER_ARRAY |
-                                             self::STATE_IN_ARRAY | self::STATE_LEAVE_ARRAY;
-    
-    
-        private const STATE_MASK_AT_BLOCK     = self::STATE_ENTER_ARRAY | self::STATE_ENTER_OBJECT;
-        private const STATE_MASK_LEAVE     = self::STATE_LEAVE_ARRAY | self::STATE_LEAVE_OBJECT;
-        */
     }
 
     private function cbLoggerOutput($new_state_flags, &$param) : bool
@@ -1432,7 +1275,6 @@ class BinsonParser
         return true;
     }
 
-
     private function parseNumeric(string $chunk, bool $is_float = false)
     {
         $len = strlen($chunk);
@@ -1462,10 +1304,6 @@ class BinsonParser
         throw new BinsonException(binson::ERROR_FORMAT);
     }
 
-
-
- 
-
     private function consume(int $size, bool $peek = false) : string
     {
         if ($size === 0)
@@ -1481,10 +1319,7 @@ class BinsonParser
 
         return $chunk;
     }
-
-
 }
-
 
 function util_pack_size($val, int $type_hint) : string
 {
@@ -1507,7 +1342,6 @@ function util_pack_size($val, int $type_hint) : string
 
         default: break;
     }
-
 
     if ($type_hint == binson::TYPE_DOUBLE) {
         $size = 8;
