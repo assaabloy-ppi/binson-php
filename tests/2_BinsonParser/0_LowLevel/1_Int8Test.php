@@ -17,7 +17,7 @@ class Int8ParserTest extends TestCase
         $writer->arrayBegin()->putInteger($arg)->arrayEnd();
 
         $parser = new BinsonParser($buf);
-        $parser->goIntoArray()->next();
+        $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_INTEGER, $parser->getType());
         $this->assertSame($arg, $parser->getValue(binson::TYPE_INTEGER));       
     }

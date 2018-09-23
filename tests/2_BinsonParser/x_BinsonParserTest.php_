@@ -17,7 +17,7 @@ class ExtBinsonParserTest extends TestCase
 
         $this->assertSame(0, $parser->getDepth());
 
-        $parser->goIntoObject();
+        $parser->enterObject();
 
         $this->assertSame(1, $parser->getDepth());
         $this->assertSame(binson::BINSON_TYPE_OBJECT, $parser->getType());
@@ -33,7 +33,7 @@ class ExtBinsonParserTest extends TestCase
         $buf = "\x42\x45\x43";
         $parser = new BinsonParser($buf, binson::BINSON_TYPE_ARRAY);
 
-        $parser->goIntoArray();
+        $parser->enterArray();
 
         $this->assertSame(1, $parser->getDepth());
         $this->assertSame(binson::BINSON_TYPE_ARRAY, $parser->getType());
@@ -51,7 +51,7 @@ class ExtBinsonParserTest extends TestCase
         $buf = "\x42\x10\x7b\x43";
         $parser = new BinsonParser($buf, binson::BINSON_TYPE_ARRAY);
 
-        $parser->goIntoArray();
+        $parser->enterArray();
 
         $this->assertSame(1, $parser->getDepth());
         $this->assertSame(binson::BINSON_TYPE_ARRAY, $parser->getType());
@@ -69,7 +69,7 @@ class ExtBinsonParserTest extends TestCase
         $buf = "\x42\x46\xae\x47\xe1\x7a\x14\xae\xf3\x3f\x43";
         $parser = new BinsonParser($buf, binson::BINSON_TYPE_ARRAY);
 
-        $parser->goIntoArray();
+        $parser->enterArray();
 
         $this->assertSame(1, $parser->getDepth());
         $this->assertSame(binson::BINSON_TYPE_ARRAY, $parser->getType());
@@ -88,7 +88,7 @@ class ExtBinsonParserTest extends TestCase
         $buf = "\x40\x14\x01\x61\x10\x7b\x14\x03\x62\x63\x64\x14\x0c\x48\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64\x21\x41";
         $parser = new BinsonParser($buf);
 
-        $parser->goIntoObject();
+        $parser->enterObject();
         $parser->next();
         $this->assertSame("a", $parser->getName());
 
@@ -102,7 +102,7 @@ class ExtBinsonParserTest extends TestCase
         $buf = "\x42\x14\x03\x62\x63\x64\x43";
         $parser = new BinsonParser($buf, binson::BINSON_TYPE_ARRAY);
 
-        $parser->goIntoArray()->next();
+        $parser->enterArray()->next();
         $this->assertSame("bcd", $parser->getString());
     }
 
@@ -112,7 +112,7 @@ class ExtBinsonParserTest extends TestCase
         $buf = "\x42\x18\x05\x01\x00\x02\x03\x00\x43";
         $parser = new BinsonParser($buf, binson::BINSON_TYPE_ARRAY);
 
-        $parser->goIntoArray()->next();
+        $parser->enterArray()->next();
         $this->assertSame(binson::BINSON_TYPE_BYTES, $parser->getType());
         
         $this->markTestSkipped('do not work for now');
@@ -129,7 +129,7 @@ class ExtBinsonParserTest extends TestCase
         $buf = "\x40\x14\x01\x61\x10\x7b\x14\x03\x62\x63\x64\x14\x0c\x48\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64\x21\x41";
         $parser = new BinsonParser($buf);
 
-        $parser->goIntoObject();
+        $parser->enterObject();
         $parser->field("a");
         $this->assertSame(123, $parser->getInteger());
 
@@ -143,7 +143,7 @@ class ExtBinsonParserTest extends TestCase
         $buf = "\x40\x14\x01\x61\x10\x7b\x14\x03\x62\x63\x64\x14\x0c\x48\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64\x21\x41";
         $parser = new BinsonParser($buf);
 
-        $parser->goIntoObject();
+        $parser->enterObject();
         $parser->next();
         $this->assertSame(123, $parser->getInteger());
 
@@ -161,7 +161,7 @@ class ExtBinsonParserTest extends TestCase
         $b1 = "\x40\x14\x01\x61\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43\x14\x01\x62\x45\x14\x01\x63\x10\x07\x41";
         $parser = new BinsonParser($b1);
 
-        $parser->goIntoObject()->field("a");
+        $parser->enterObject()->field("a");
         $this->assertSame("\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43", $parser->toBytes());
 
     }

@@ -852,13 +852,13 @@ class BinsonParser
 
     }
 
-    public function goIntoObject() : BinsonParser
+    public function enterObject() : BinsonParser
     {
         $this->advance(self::ADVANCE_ONE, null, binson::TYPE_OBJECT);
         return $this;
     }
 
-    public function goIntoArray() : BinsonParser
+    public function enterArray() : BinsonParser
     {
         $this->advance(self::ADVANCE_ONE, null, binson::TYPE_ARRAY);
         return $this;

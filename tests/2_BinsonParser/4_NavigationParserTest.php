@@ -13,7 +13,7 @@ class NavigationParserTest extends TestCase
         $buf = "\x42\x44\x43";  // [true]
         $parser = new BinsonParser($buf);
 
-        $parser->goIntoArray();
+        $parser->enterArray();
         $parser->next();
             $this->assertSame(true, $parser->getValue(binson::TYPE_BOOLEAN));
 
@@ -31,7 +31,7 @@ class NavigationParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());
         $parser->field("a");

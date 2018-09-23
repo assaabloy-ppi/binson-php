@@ -17,7 +17,7 @@ class BytesParserTest extends TestCase
         $writer->arrayBegin()->putBytes($arg)->arrayEnd();
 
         $parser = new BinsonParser($buf);
-        $parser->goIntoArray()->next();
+        $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_BYTES, $parser->getType());
         $this->assertSame($arg, $parser->getValue(binson::TYPE_BYTES));
     }

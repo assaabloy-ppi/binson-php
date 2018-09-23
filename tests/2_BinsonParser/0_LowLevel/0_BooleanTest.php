@@ -18,7 +18,7 @@ class BooleanParserTest extends TestCase
         $writer->arrayBegin()->putBoolean(true)->arrayEnd();
 
         $parser = new BinsonParser($buf);
-        $parser->goIntoArray()->next();
+        $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_BOOLEAN, $parser->getType());
         $this->assertSame(true, $parser->getValue(binson::TYPE_BOOLEAN));
     }
@@ -31,7 +31,7 @@ class BooleanParserTest extends TestCase
         $writer->arrayBegin()->putFalse()->arrayEnd();
 
         $parser = new BinsonParser($buf);
-        $parser->goIntoArray()->next();
+        $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_BOOLEAN, $parser->getType());
         $this->assertSame(false, $parser->getValue(binson::TYPE_BOOLEAN));
     }

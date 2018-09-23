@@ -17,7 +17,7 @@ class StringParserTest extends TestCase
         $writer->arrayBegin()->putString($arg)->arrayEnd();
 
         $parser = new BinsonParser($buf);
-        $parser->goIntoArray()->next();
+        $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_STRING, $parser->getType());
         $this->assertSame($arg, $parser->getValue(binson::TYPE_STRING));       
     }

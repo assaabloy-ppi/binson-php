@@ -14,7 +14,7 @@ class Value1ParserTest extends TestCase
         $parser = new BinsonParser($buf);
         
         $this->assertSame(0, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());            
         $parser->next();

@@ -14,7 +14,7 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());
         $parser->leaveObject();
@@ -29,7 +29,7 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());
         $parser->leaveArray();
@@ -44,9 +44,9 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(1, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(2, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());
         $parser->leaveArray();
@@ -63,13 +63,13 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
         $parser->next();
             $this->assertSame(1, $parser->depth);
             $this->assertSame("a", $parser->getName());
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(2, $parser->depth);
         $parser->leaveArray();
             $this->assertSame(1, $parser->depth);
@@ -85,25 +85,25 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
         $parser->next();
             $this->assertSame(1, $parser->depth);
             $this->assertSame("", $parser->getName());
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(2, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
         $parser->next();
             $this->assertSame(2, $parser->depth);
             $this->assertSame("", $parser->getName());
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(3, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
         $parser->next();
             $this->assertSame(3, $parser->depth);
             $this->assertSame("", $parser->getName());
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(4, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
         $parser->leaveArray();            
@@ -125,20 +125,20 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
         $parser->next();
             $this->assertSame(1, $parser->depth);
             $this->assertSame("a", $parser->getName());
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(2, $parser->depth);
 
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
             $parser->next();
             $this->assertSame(2, $parser->depth);
             $this->assertSame("b", $parser->getName());
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(3, $parser->depth);
         $parser->leaveArray();
             $this->assertSame(2, $parser->depth);
@@ -156,15 +156,15 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
         $parser->next();
             $this->assertSame(1, $parser->depth);
             $this->assertSame("b", $parser->getName());
-        $parser->goIntoArray();
-        $parser->goIntoArray();
-        $parser->goIntoArray();
+        $parser->enterArray();
+        $parser->enterArray();
+        $parser->enterArray();
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());            
             $this->assertSame(4, $parser->depth);
         $parser->leaveArray();
@@ -184,17 +184,17 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoObject();
+        $parser->enterObject();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
         $parser->next();
             $this->assertSame(1, $parser->depth);
             $this->assertSame("b", $parser->getName());
-        $parser->goIntoArray();
+        $parser->enterArray();
             $parser->next();
             $parser->next();
-            $parser->goIntoArray();
-            $parser->goIntoObject();
+            $parser->enterArray();
+            $parser->enterObject();
         $this->assertSame(binson::TYPE_OBJECT, $parser->getType());            
             $this->assertSame(4, $parser->depth);
 
@@ -209,11 +209,11 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(1, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(2, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(3, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());
         $parser->leaveArray();
@@ -232,16 +232,16 @@ class SimpleParserTest extends TestCase
         $parser = new BinsonParser($buf);
 
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(2, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());
         $parser->leaveArray();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(2, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());
         $parser->leaveArray();
@@ -253,7 +253,7 @@ class SimpleParserTest extends TestCase
 
         $parser->reset();
             $this->assertSame(0, $parser->depth);
-        $parser->goIntoArray();
+        $parser->enterArray();
             $this->assertSame(1, $parser->depth);
             $this->assertSame(binson::TYPE_ARRAY, $parser->getType());
         $parser->next();

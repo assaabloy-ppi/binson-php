@@ -126,9 +126,9 @@ Low-level API:
 $buf = "\x40\x14\x01\x61\x42\x44\x10\x7b\x14\x01\x62\x10\x05\x43\x14\x01\x62\x45\x14\x01\x63\x10\x07\x41";
 $parser = new BinsonParser($buf);
 
-$parser->goIntoObject();
+$parser->enterObject();
 $parser->field("a");
-$parser->goIntoArray();
+$parser->enterArray();
 $parser->next();
 
 $out = [];

@@ -18,7 +18,7 @@ class DoubleParserTest extends TestCase
         $writer->arrayBegin()->putDouble($arg)->arrayEnd();
 
         $parser = new BinsonParser($buf);
-        $parser->goIntoArray()->next();
+        $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_DOUBLE, $parser->getType());
 
         // true by definition: NAN != NAN
