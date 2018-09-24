@@ -1281,7 +1281,7 @@ class BinsonParser
         $filler = chr(ord($chunk[-1]) & 0x80 ? 0xff : 0x00);
         $chunk = str_pad($chunk, 8, $filler);
         
-        $val = unpack($is_float? 'e' : 'P', $chunk);
+        $val = unpack($is_float? 'e' : (PHP_INT_SIZE > 4? 'P':'V'), $chunk);
         $v = $val[1];  // for beter code readability only        
 
         if (is_float($v))
@@ -1325,7 +1325,7 @@ function util_pack_size($val, int $type_hint) : string
 {
     $val_bytes = array_fill(0, 9, 0);
     $size = 0;
-    $val_unpack_code = 'P'; // 64bit unsigned LE
+    $val_pack_code = PHP_INT_SIZE > 4? 'P':'V'; // 32bit:64bit unsigned LE
 
     switch ($type_hint)
     {
@@ -1333,7 +1333,7 @@ function util_pack_size($val, int $type_hint) : string
             $val_bytes[0] = binson::DEF_INT8; break;            
         case binson::TYPE_DOUBLE:
             $val_bytes[0] = binson::DEF_DOUBLE; 
-            $val_unpack_code = 'e'; // 64bit double LE
+            $val_pack_code = 'e'; // 64bit double LE
             break;
         case binson::TYPE_STRING:
             $val_bytes[0] = binson::DEF_STRLEN_INT8; break;
@@ -1364,7 +1364,7 @@ function util_pack_size($val, int $type_hint) : string
         }
     }
 
-    return chr($val_bytes[0]) . substr(pack($val_unpack_code, $val), 0, $size);
+    return chr($val_bytes[0]) . substr(pack($val_pack_code, $val), 0, $size);
 }
 
 ?>
