@@ -66,7 +66,6 @@ abstract class binson {
     const ERROR_WRONG_TYPE     = 7;
     const ERROR_MAX_DEPTH      = 8;
     const ERROR_ARG            = 9;
-    const ERROR_INT_OVERFLOW   = 10;
 
     const CFG_DEFAULT  = [
         'max_raw_size' => 40*1000000, 
@@ -96,8 +95,6 @@ class BinsonException extends Exception
             case binson::ERROR_WRONG_TYPE:   $msg = '[Wrong type]'; break;
             case binson::ERROR_MAX_DEPTH:    $msg = '[Max nesting depth reached]'; break;
             case binson::ERROR_ARG:          $msg = '[Wrong argument]'; break;
-            case binson::ERROR_INT_OVERFLOW: $msg = '[Integer overflow]'; break;
-
 
             default: 
                 $msg = 'Unknown binson exception, code: ' . $exc_code; break;
@@ -194,10 +191,7 @@ class BinsonWriter
     }
 
     public function putInteger(int $val) : BinsonWriter
-    {   
-        if (is_float($val))
-            throw new BinsonException(binson::ERROR_INT_OVERFLOW);
-
+    {
     	$this->writeToken(binson::TYPE_INTEGER, $val);
     	return $this;
     }
