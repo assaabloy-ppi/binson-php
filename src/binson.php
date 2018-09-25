@@ -1293,19 +1293,15 @@ class BinsonParser
             }
                 
             // int64 parsing workarount on php32
-            $val = unpack('v4', $chunk);
-            $combined = (float)$val[1] +
-                        (float)$val[2] * 65536.0 + 
-                        (float)$val[3] * 4294967296.0 + 
-                        (float)$val[4] * 281474976710656.0; 
+            $val = unpack('vllword/vlhword/Vhdword', $chunk);
+            $hdword_signed = unpack('l', pack('L', $val['hdword'])); // cast unsigned to signed
+            
+            $combined = $val['llword'] +
+                        $val['lhword'] * 65536.0 + 
+                        $hdword_signed[1] * 4294967296.0;
 
-            echo $combined.PHP_EOL;  
-
-            echo bin2hex($filler).PHP_EOL;
-            //$res = ($filler === 0x00)? abs($combined) : -abs($combined);
-            $res = ($filler === 0x00 && $combined < 0.0) ? -$combined : $combined;
-            echo 'to_ret: '.$res.PHP_EOL;
-            return $res;
+            //echo $combined.PHP_EOL;  
+            return $combined;
         }
 
         $val = unpack($is_float? 'e' : (PHP_INT_SIZE < 8? 'V' : 'P'), $chunk);

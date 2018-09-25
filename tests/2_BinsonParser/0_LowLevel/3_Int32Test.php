@@ -43,7 +43,7 @@ class Int32ParserTest extends TestCase
          {
             $val = $parser->getValue(binson::TYPE_INTEGER);
             $this->assertSame(true, is_float($val));  // internally cast to float
-            $this->assertEquals(binson::INT32_MAX+1.0, $val, '', 0.5);
+            $this->assertEquals(binson::INT32_MAX+1.0, $val, '', 0.001);
          }
          else
             $this->assertSame(binson::INT32_MAX+1, $parser->getValue(binson::TYPE_INTEGER));
@@ -64,7 +64,7 @@ class Int32ParserTest extends TestCase
          {
             $val = $parser->getValue(binson::TYPE_INTEGER);
             $this->assertSame(true, is_float($val));  // internally cast to float
-            $this->assertEquals(binson::INT32_MIN-1.0, $val, '', 0.5);
+            $this->assertEquals(binson::INT32_MIN-1.0, $val, '', 0.001);
          }
          else
             $this->assertSame(binson::INT32_MIN-1, $parser->getValue(binson::TYPE_INTEGER));
