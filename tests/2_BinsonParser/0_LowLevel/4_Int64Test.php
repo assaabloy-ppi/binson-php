@@ -66,7 +66,7 @@ class Int64ParserTest extends TestCase
          {
             $val = $parser->getValue(binson::TYPE_INTEGER);
             $this->assertSame(true, is_float($val));  // internally cast to float
-            $this->assertEquals(2<<45, $val, '', 0.001);
+            $this->assertEquals(70368744177664.0, $val, '', 0.001);
          }
          else
             $this->assertSame(2<<45, $parser->getValue(binson::TYPE_INTEGER));
@@ -87,7 +87,7 @@ class Int64ParserTest extends TestCase
          {
             $val = $parser->getValue(binson::TYPE_INTEGER);
             $this->assertSame(true, is_float($val));  // internally cast to float
-            $this->assertEquals(-2<<45, $val, '', 0.001);
+            $this->assertEquals(-70368744177664.0, $val, '', 0.001);
          }
          else
             $this->assertSame(-2<<45, $parser->getValue(binson::TYPE_INTEGER));
