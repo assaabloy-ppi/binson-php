@@ -1286,6 +1286,7 @@ class BinsonParser
 
         if ($len == 8 && !$is_float && PHP_INT_SIZE < 8)
         {   
+            var_dump($this->config);
             if ($this->config['parser_int_overflow_action'] !== 'to_float')
                 throw new BinsonException(binson::ERROR_INT_OVERFLOW);
                 
