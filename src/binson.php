@@ -1294,7 +1294,7 @@ class BinsonParser
                 
             // int64 parsing workarount on php32
             $val = unpack('V2', $chunk);
-            $combined = (float)($val[1] + $val[2] * 0x100000000);
+            $combined = (float)$val[1] + (float)$val[2] * (float)0x100000000;
             echo $combined.PHP_EOL;            
             echo bin2hex($filler).PHP_EOL;            
             return ($filler === 0x00)? abs($combined) : -abs($combined);
