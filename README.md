@@ -193,6 +193,9 @@ if (PHP_INT_SIZE === 4)  // we are on php32
 }
 ```
 
-There are no guarantee to preserve all significant digits for numbers above 2^45 (70368744177664).
+There are no guarantee to preserve all significant digits for numbers above 2^53 (9007199254740992) and below -2^53-1 (-9007199254740993). 
 
-Last fact should be tested closer.
+> With the 52 bits of the fraction significand appearing in the memory format, the total precision is therefore 53 bits (approximately 16 decimal digits).... Between 2<sup>52</sup>=4,503,599,627,370,496 and 2<sup>53</sup>=9,007,199,254,740,992 the representable numbers are exactly the integers. For the next range, from 2<sup>53</sup> to 2<sup>54</sup>, everything is multiplied by 2, so the representable numbers are the even ones, etc. Conversely, for the previous range from 2<sup>51</sup> to 2<sup>52</sup>, the spacing is 0.5, etc.
+
+Source:  [wikipedia](https://en.wikipedia.org/wiki/Double-precision_floating-point_format#IEEE_754_double-precision_binary_floating-point_format:_binary64)
+
