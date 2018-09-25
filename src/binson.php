@@ -66,6 +66,7 @@ abstract class binson {
     const ERROR_WRONG_TYPE     = 7;
     const ERROR_MAX_DEPTH      = 8;
     const ERROR_ARG            = 9;
+    const ERROR_INT_OVERFLOW   = 10;
 
     const CFG_DEFAULT  = [
         'max_raw_size' => 40*1000000, 
@@ -73,6 +74,7 @@ abstract class binson {
         'max_string_len' => 10240,
         'max_bytes_len' => 10240,
         'max_field_count' => 1000,
+        'parser_int_overflow_action' => 'exception' // [exception|to_float]
     ];
 }
 
@@ -95,6 +97,7 @@ class BinsonException extends Exception
             case binson::ERROR_WRONG_TYPE:   $msg = '[Wrong type]'; break;
             case binson::ERROR_MAX_DEPTH:    $msg = '[Max nesting depth reached]'; break;
             case binson::ERROR_ARG:          $msg = '[Wrong argument]'; break;
+            case binson::ERROR_INT_OVERFLOW: $msg = '[Integer overflow]'; break;
 
             default: 
                 $msg = 'Unknown binson exception, code: ' . $exc_code; break;
@@ -1280,11 +1283,21 @@ class BinsonParser
         $len = strlen($chunk);
         $filler = chr(ord($chunk[-1]) & 0x80 ? 0xff : 0x00);
         $chunk = str_pad($chunk, 8, $filler);
-        
-        $val = unpack($is_float? 'e' : (PHP_INT_SIZE > 4? 'P':'V'), $chunk);
-        $v = $val[1];  // for beter code readability only        
 
-        if (is_float($v))
+        if ($len == 8 && !$is_float && PHP_INT_SIZE < 8)
+        {   
+            if ($this->config['parser_int_overflow_action'] !== 'to_float')
+                throw new BinsonException(binson::ERROR_INT_OVERFLOW);
+                
+            // int64 parsing workarount on php32
+            $val = unpack('V2', $chunk);
+            return (float)($val[1] + $val[2] * 0x100000000);
+        }
+
+        $val = unpack($is_float? 'e' : 'P', $chunk);
+        $v = $val[1];
+
+        if ($is_float)
         {
             if (is_float($v))
                 return $v;
