@@ -32,12 +32,13 @@ class Int32ParserTest extends TestCase
     { 
         $buf = "\x42\x13\x00\x00\x00\x80\x00\x00\x00\x00\x43";
         $parser = new BinsonParser($buf);
+
+        // expect integer overflow on 32bit PHP builds
+        $parser->config['parser_int_overflow_action'] = 'to_float';
+
         $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_INTEGER, $parser->getType());
-
-         // expect integer overflow on 32bit PHP builds
-         $parser->config['parser_int_overflow_action'] = 'to_float';
-
+        
          if (PHP_INT_SIZE === 4)
          {
             $val = $parser->getValue(binson::TYPE_INTEGER);
@@ -55,11 +56,9 @@ class Int32ParserTest extends TestCase
 
         // expect integer overflow on 32bit PHP builds
         $parser->config['parser_int_overflow_action'] = 'to_float';
-        $this->assertSame('to_float', $parser->config['parser_int_overflow_action']);
 
         $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_INTEGER, $parser->getType());
-
 
          if (PHP_INT_SIZE === 4)
          {
