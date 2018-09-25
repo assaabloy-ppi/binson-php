@@ -9,7 +9,7 @@ Just place `src/binson.php` into your project's source directory and "require" i
 Compatibility
 --------------
 Known to be stable on following platforms:
-* PHP 7.1.20 (Ubuntu 14.04.5 LTS, x86_64)
+* PHP 7.1.20 (Ubuntu 14.04.5 LTS, x86_64 and i686)
 
 Note: no PHP5 compatibility (by design)
 
