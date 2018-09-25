@@ -1294,7 +1294,7 @@ class BinsonParser
             return (float)($val[1] + $val[2] * 0x100000000);
         }
 
-        $val = unpack($is_float? 'e' : 'P', $chunk);
+        $val = unpack($is_float? 'e' : (PHP_INT_SIZE < 8? 'V' : 'P'), $chunk);
         $v = $val[1];
 
         if ($is_float)
