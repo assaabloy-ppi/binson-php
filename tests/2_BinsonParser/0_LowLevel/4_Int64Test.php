@@ -71,6 +71,27 @@ class Int64ParserTest extends TestCase
          else
             $this->assertSame(2<<45, $parser->getValue(binson::TYPE_INTEGER));
     }
+    
+    public function testIntegerINT64_Pos_LastDoubleIEEE()
+    { 
+        $buf = "\x42\x13\x00\x00\x00\x00\x00\x00\x20\x00\x43";  // 2<<52
+        $parser = new BinsonParser($buf);
+
+        // expect integer overflow on 32bit PHP builds
+        $parser->config['parser_int_overflow_action'] = 'to_float';
+
+        $parser->enterArray()->next();
+        $this->assertSame(binson::TYPE_INTEGER, $parser->getType());
+
+         if (PHP_INT_SIZE === 4)
+         {
+            $val = $parser->getValue(binson::TYPE_INTEGER);
+            $this->assertSame(true, is_float($val));  // internally cast to float
+            $this->assertEquals(9007199254740992.0, $val, '', 0.001);
+         }
+         else
+            $this->assertSame(2<<52, $parser->getValue(binson::TYPE_INTEGER));
+    }
 
     public function testIntegerINT64_Neg_NoLostPrecision()
     { 
