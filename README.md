@@ -37,6 +37,7 @@ Features
 * Iterative parsing (no recursion)
 * Declarative "state transition matrix" based parsing algorithm
 * Error handling is PHP7 exception based (see `BinsonException` class)
+* Limited 64bit integer parsing on php32 builds supported (see [below](#limitation-64bit-integer-support))
 
 Testing
 -----------
@@ -161,3 +162,36 @@ To check for data before parsing for being valid binson:
 ```PHP
 $is_valid = $parser->verify();
 ```
+
+Limitation: 64bit integer support
+---------------------------------
+
+64bit integers are fully supported on 64bit PHP7 builds.
+
+Unfortunately, 32bit PHP do not support 64bit integers in its core.
+This library implements limited support for parsing (not writing) of 64bit integer via fallback to float type.
+
+By default this support is disabled. When trying to parse int64 fiels on php32 `BinsonException` (with error code binson::ERROR_INT_OVERFLOW) will be thrown.
+
+To enable instant int64 to float conversion during parsing, parser configuration should be updated in runtime.
+
+The code to illustrate above:
+```php
+$buf = "\x42\x13\x00\x00\x00\x00\x00\x40\x00\x00\x43";  // 2<<45
+$parser = new BinsonParser($buf);
+
+// expect integer overflow on 32bit PHP builds
+$parser->config['parser_int_overflow_action'] = 'to_float';
+
+$parser->enterArray()->next();
+
+if (PHP_INT_SIZE === 4)  // we are on php32
+{
+    $val = $parser->getValue(binson::TYPE_INTEGER);  // type check argument is optional 
+    if (is_float($val))
+        print_r($val);
+}
+```
+
+There are no guarantee to preserve all significant digits for numbers above 2^45 (70368744177664).
+Last fact should be tested closer.
