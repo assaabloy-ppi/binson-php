@@ -1296,8 +1296,10 @@ class BinsonParser
             $val = unpack('V2', $chunk);
             $combined = (float)$val[1] + (float)$val[2] * (float)0x100000000;
             echo $combined.PHP_EOL;            
-            echo bin2hex($filler).PHP_EOL;            
-            return ($filler === 0x00)? abs($combined) : -abs($combined);
+            echo bin2hex($filler).PHP_EOL;
+            $res = ($filler === 0x00)? abs($combined) : -abs($combined);
+            echo 'to_ret: '.$res.PHP_EOL;
+            return $res;
         }
 
         $val = unpack($is_float? 'e' : (PHP_INT_SIZE < 8? 'V' : 'P'), $chunk);
