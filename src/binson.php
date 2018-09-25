@@ -1301,7 +1301,7 @@ class BinsonParser
 
             echo bin2hex($filler).PHP_EOL;
             //$res = ($filler === 0x00)? abs($combined) : -abs($combined);
-            $res = -$combined;
+            $res = ($filler === 0x00 && $combined < 0.0) ? -$combined : $combined;
             echo 'to_ret: '.$res.PHP_EOL;
             return $res;
         }
