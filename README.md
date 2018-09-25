@@ -171,7 +171,7 @@ Limitation: 64bit integer support
 Unfortunately, 32bit PHP do not support 64bit integers in its core.
 This library implements limited support for parsing (not writing) of 64bit integer via fallback to float type.
 
-By default this support is disabled. When trying to parse int64 fiels on php32 `BinsonException` (with error code binson::ERROR_INT_OVERFLOW) will be thrown.
+By default this support is disabled. When trying to parse int64 field on php32 `BinsonException` (with error code `binson::ERROR_INT_OVERFLOW`) will be thrown.
 
 To enable instant int64 to float conversion during parsing, parser configuration should be updated in runtime.
 
@@ -194,4 +194,5 @@ if (PHP_INT_SIZE === 4)  // we are on php32
 ```
 
 There are no guarantee to preserve all significant digits for numbers above 2^45 (70368744177664).
+
 Last fact should be tested closer.
