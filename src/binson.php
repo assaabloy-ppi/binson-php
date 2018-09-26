@@ -858,8 +858,21 @@ class BinsonParser
     public function tostr() : string
     {
         $str = '';
-        $this->advance(self::ADVANCE_TRAVERSAL, null, 0, [$this, 'cbToString'], $str);
+        $res = $this->advance(self::ADVANCE_ONE, null, binson::TYPE_OBJECT | binson::TYPE_ARRAY,
+                               [$this, 'cbToString'], $str);
+        if ($res)
+            $res = $this->advance(self::ADVANCE_LEAVE_BLOCK, null, 0, [$this, 'cbToString'], $str);
         return $str;
+    }
+
+    public function deserialize() : array
+    {
+        $arr = [];
+        $res = $this->advance(self::ADVANCE_ONE, null, binson::TYPE_OBJECT | binson::TYPE_ARRAY,
+                               [$this, 'cbDeserializer'], $arr);
+        if ($res)
+            $res = $this->advance(self::ADVANCE_LEAVE_BLOCK, null, 0, [$this, 'cbDeserializer'], $arr);
+        return $arr['data'];
     }
 
     private function requestStateTransition() : array
@@ -929,7 +942,7 @@ class BinsonParser
     {
         $prev_state = $this->state['top'];
         $this->state[] = $state_update; // copy id, type, value
-        return $cb? $cb($prev_state, $cb_param) : false;        
+        return $cb? $cb($prev_state, $param) : false;        
     }
 
     private function advance(int $scan_mode, ?string $scan_name = null, int $ensure_type = null,
@@ -1096,9 +1109,11 @@ class BinsonParser
     }
 
     private function cbValidator(array $prev_state, &$param = null) : bool
-    {}
+    {
+       // field order validation!
+    }
 
-    private function cbDeserializer(array $prev_state, &$param = null) : bool
+    private function cbDeserializer(?array $prev_state, &$param = null) : bool
     {
         if (!is_array($param))
             throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbDeserializer() require `array` parameter");
@@ -1112,8 +1127,14 @@ class BinsonParser
         $depth = $this->depth;
 
         switch ($new_state['id']) {
-            case self::STATE_ENTER_ARRAY:
-            case self::STATE_ENTER_OBJECT:
+            case self::STATE_AT_OBJECT_:
+            case self::STATE_AT_ARRAY_:
+            case self::STATE_IN_OBJECT_END_:
+            case self::STATE_IN_ARRAY_END_:
+                return true;
+
+            case self::STATE_IN_ARRAY_BEGIN:
+            case self::STATE_IN_OBJECT_BEGIN:
                 $param['parent'][] = $param['current'];
                 $param['current'][] = [];
 
@@ -1122,37 +1143,37 @@ class BinsonParser
 
                 //$param['current'] = &$param['current'];
 
-
                 return true;
-            case self::STATE_LEAVE_ARRAY:
-            case self::STATE_LEAVE_OBJECT:
+            case self::STATE_OUTOF_ARRAY:
+            case self::STATE_OUTOF_OBJECT:
                 unset($param['current']);
                 $param['current'] = array_pop($param['parent']);
-                debug_zval_dump($param['parent']);
+                //debug_zval_dump($param['parent']);
 
                 //end($param['current']);
 
                 return true;
 
-            case self::STATE_IN_OBJ_FIELD:
+            case self::STATE_AT_ITEM_KEY:
                 $param .= '"'.$new_state['val'].'":';
                 return true;
-            case self::STATE_IN_OBJ_VALUE:
-            case self::STATE_IN_ARRAY:
+            case self::STATE_AT_VALUE:
+            //case self::STATE_IN_ARRAY:
             {
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
-                    $param .= var_export($new_state['val'], true);
+                    end($param['current']);
+                    $param['current'][] = 1;//$new_state['val'];
                     return true;
                 case binson::TYPE_DOUBLE:
                 case binson::TYPE_INTEGER:
-                    $param .= $new_state['val'];
+                    $param['current'][] = [1];//$new_state['val'];
                     return true;
                 case binson::TYPE_STRING:
-                    $param .= '"'.$new_state['val'].'"';
+                    $param['current'][] = $new_state['val'];
                     return true;
                 case binson::TYPE_BYTES:
-                    $param .= '"'.bin2hex($new_state['val']).'"';
+                    $param['current'][] = $new_state['val'];
                     return true;
     
                 default: /* we should not get here */
@@ -1179,33 +1200,39 @@ class BinsonParser
         $depth = $this->depth;
                 
         switch ($new_state['id']) {
-            case self::STATE_ENTER_ARRAY:
-                $param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
+            case self::STATE_AT_OBJECT_:
+            case self::STATE_AT_ARRAY_:
+            case self::STATE_IN_OBJECT_END_:
+            case self::STATE_IN_ARRAY_END_:
+                return true;
+
+            case self::STATE_IN_ARRAY_BEGIN:
+                //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 $param .= '[';
                 return true;
-            case self::STATE_ENTER_OBJECT:
-                $param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
+            case self::STATE_IN_OBJECT_BEGIN:
+                //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 $param .= '{';
                 return true;
-            case self::STATE_LEAVE_ARRAY:
+            case self::STATE_OUTOF_ARRAY:
                 $param .= ']';
                 //$param .= ($_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 return true;
-            case self::STATE_LEAVE_OBJECT:
+            case self::STATE_OUTOF_OBJECT:
                 $param .= '}';
                 //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 return true;
-            case self::STATE_IN_OBJ_FIELD:
+            case self::STATE_AT_ITEM_KEY:
                 $param .= '"'.$new_state['val'].'":';
                 return true;
-            case self::STATE_IN_OBJ_VALUE:
-            case self::STATE_IN_ARRAY:
+            case self::STATE_AT_VALUE:
+            //case self::STATE_IN_ARRAY:
             {
                 // totally ignore "unsupported" end types here            
                 if (!($new_state['type'] & self::TYPE_MASK_VALUE))
                     return true;
 
-                $param .= ($prev_state['id'] & self::STATE_MASK_INNER) ? ',' : '';
+                //$param .= ($prev_state['id'] & self::STATE_MASK_INNER) ? ',' : '';
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
                 case binson::TYPE_DOUBLE:

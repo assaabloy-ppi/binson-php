@@ -11,24 +11,24 @@ $b = "";
 $writer = new BinsonWriter($b);
 
 //$src = ["abc", "dcd", ["ddf",["xc"]], "err"];
-$src = [[null=>null]];
+$src = [[null=>null],1,true];
 //$src = [true];
 //["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7]
 // 401401614244107b140162100543 140162 45 140163 100741'
 // 401401614244107b140162100543 45 100741'
 $writer->put($src);
-echo bin2hex($b).PHP_EOL;
+echo "serialized: ".bin2hex($b).PHP_EOL;
 
 $p = new BinsonParser($b);
 
-
 $encdec = $p->tostr();
-
 echo PHP_EOL;
-echo json_encode($src).PHP_EOL;
-echo $encdec.PHP_EOL;
+echo "tostr() -> ".$encdec.PHP_EOL;
+//echo "json_of_orig: ".str_replace("\"\":null", "", json_encode($src)).PHP_EOL;
+echo "json_of_orig: ".json_encode($src).PHP_EOL;
 
-
+$p->reset();
+print_r($p->deserialize());
 
 //$p->advance_test1(BinsonParser::ADVANCE_TRAVERSAL, null, 0, null, null);
 
