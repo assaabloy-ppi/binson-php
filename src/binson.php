@@ -267,6 +267,7 @@ class BinsonWriter
         switch(gettype($var))
         {
             case "array":
+                uksort($var, "strcmp");
                 break;        
 
             case "string":   return $this->putString($var);
@@ -287,21 +288,23 @@ class BinsonWriter
         $last_depth = -1;
         $type_stack = [];
         $block_type = -1;
+        $rrr;
 
         foreach($iterator as $key => $value) {
             
             $depth = $iterator->getDepth();   
-          
+            
             while ($depth < $last_depth)
-            {                
-                $block_type = array_pop($type_stack);
-                $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();                
-                $last_depth--;
-            }
-          
+            {                 
+                $block_type = array_pop($type_stack);              
+                $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();                                
+                $last_depth--;                
+            
+            }          
+
             if ($block_type == -1 && $depth == 0)
                 $block_type = (is_int($key) && $key === 0) ? binson::TYPE_ARRAY : binson::TYPE_OBJECT;
-            
+        
             if ($depth > $last_depth) {  // new block detected
                 $block_type = (!is_int($key)) ? binson::TYPE_OBJECT : binson::TYPE_ARRAY;       
                 $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayBegin() : $this->objectBegin();
@@ -309,7 +312,7 @@ class BinsonWriter
                 
                 //continue;
             }            
-            else if ($depth < $last_depth) {  // block end detected              
+            elseif ($depth < $last_depth) {  // block end detected              
               $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
               $block_type = array_pop($type_stack);              
             }        
