@@ -288,7 +288,6 @@ class BinsonWriter
         $last_depth = -1;
         $type_stack = [];
         $block_type = -1;
-        $rrr;
 
         foreach($iterator as $key => $value) {
             
@@ -299,18 +298,14 @@ class BinsonWriter
                 $block_type = array_pop($type_stack);              
                 $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();                                
                 $last_depth--;                
-            
+                
+                $block_type = end($type_stack);
             }          
-
-            if ($block_type == -1 && $depth == 0)
-                $block_type = (is_int($key) && $key === 0) ? binson::TYPE_ARRAY : binson::TYPE_OBJECT;
         
             if ($depth > $last_depth) {  // new block detected
                 $block_type = (!is_int($key)) ? binson::TYPE_OBJECT : binson::TYPE_ARRAY;       
                 $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayBegin() : $this->objectBegin();
                 $type_stack[] = $block_type;
-                
-                //continue;
             }            
             elseif ($depth < $last_depth) {  // block end detected              
               $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
