@@ -24,7 +24,7 @@ class ComplexParserTest extends TestCase
         $parser->next();
         $this->assertSame("b", $parser->getValue(binson::TYPE_STRING));
         $parser->leaveArray();
-        $parser->next();
+        $parser->field("b");
         $this->assertSame("b", $parser->getName());
         $this->assertSame(false, $parser->getValue(binson::TYPE_BOOLEAN));
         $parser->field("c");

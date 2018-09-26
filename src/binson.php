@@ -258,7 +258,16 @@ class BinsonWriter
         return $this;
     }
 
-    
+    private static function sortDeeply(array $arr) : array
+    {
+        foreach ($arr as $key => $val) {
+            if (is_array($val))
+                $arr[$key] = self::sortDeeply($val);
+        }
+        uksort($arr, "strcmp");
+        return $arr;
+    }
+
     public function putOne($var) : BinsonWriter
     {
         if (!$this->isSerializable($var))
@@ -267,7 +276,7 @@ class BinsonWriter
         switch(gettype($var))
         {
             case "array":
-                uksort($var, "strcmp");
+                $var = self::sortDeeply($var);
                 break;        
 
             case "string":   return $this->putString($var);
@@ -291,6 +300,9 @@ class BinsonWriter
 
         foreach($iterator as $key => $value) {
             
+            if (is_array($value))
+                uksort($value, "strcmp");
+
             $depth = $iterator->getDepth();   
             
             while ($depth < $last_depth)
