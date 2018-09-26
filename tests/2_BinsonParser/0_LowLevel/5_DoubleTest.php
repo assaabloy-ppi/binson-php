@@ -10,7 +10,7 @@ require_once(SRC_DIR . 'binson.php');
 */
 class DoubleParserTest extends TestCase
 {
-    private function testDouble(float $arg, bool $is_nan = false)
+    private function processDouble(float $arg, bool $is_nan = false)
     {
         $buf = "";
         $writer = new BinsonWriter($buf);
@@ -29,25 +29,25 @@ class DoubleParserTest extends TestCase
     }
     
     public function testDoublePlusZero()
-    { $this->testDouble(+0.0); }
+    { $this->processDouble(+0.0); }
 
     public function testDoubleMinusZero()
-    { $this->testDouble(-0.0); }
+    { $this->processDouble(-0.0); }
 
     public function testDoublePositiveExponent()
-    { $this->testDouble(+3.1415e+10); }
+    { $this->processDouble(+3.1415e+10); }
 
     public function testDoubleNegativeExponent()
-    { $this->testDouble(-3.1415e-10); }
+    { $this->processDouble(-3.1415e-10); }
 
     public function testDouble_NAN_()
-    { $this->testDouble(NAN, true); }
+    { $this->processDouble(NAN, true); }
 
     public function testDoublePlusInfinity()
-    { $this->testDouble(+INF); }
+    { $this->processDouble(+INF); }
 
     public function testDoubleMinusInfinity()
-    { $this->testDouble(-INF); }
+    { $this->processDouble(-INF); }
 }
 
 ?>

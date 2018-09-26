@@ -9,7 +9,7 @@ require_once(SRC_DIR . 'binson.php');
 */
 class BytesParserTest extends TestCase
 {
-    private function testBytes(string $arg)
+    private function processBytes(string $arg)
     {
         $buf = "";
         $writer = new BinsonWriter($buf);
@@ -23,16 +23,16 @@ class BytesParserTest extends TestCase
     }
 
     public function testBytesEmpty()
-    { $this->testBytes(""); }
+    { $this->processBytes(""); }
 
     public function testBytesSingleZero()
-    { $this->testBytes("\x00"); }
+    { $this->processBytes("\x00"); }
 
     public function testBytesWithZeroes()
-    { $this->testBytes("\x00\xff\x00\x22\x00"); }
+    { $this->processBytes("\x00\xff\x00\x22\x00"); }
 
     public function testBytesLong()
-    { $this->testBytes(str_repeat("x", 1024*100)); }
+    { $this->processBytes(str_repeat("x", 1024*100)); }
 
 }
 

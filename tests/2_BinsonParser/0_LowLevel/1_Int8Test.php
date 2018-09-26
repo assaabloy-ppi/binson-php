@@ -9,7 +9,7 @@ require_once(SRC_DIR . 'binson.php');
 */
 class Int8ParserTest extends TestCase
 {
-    private function testInt(int $arg)
+    private function processInt(int $arg)
     {
         $buf = "";
         $writer = new BinsonWriter($buf);
@@ -23,22 +23,22 @@ class Int8ParserTest extends TestCase
     }
 
     public function testZero()
-    { $this->testInt(0); }
+    { $this->processInt(0); }
     
     public function testMinus1() 
-    { $this->testInt(-1); }
+    { $this->processInt(-1); }
     
     public function testIntegerINT8_MAX()
-    { $this->testInt(binson::INT8_MAX); }
+    { $this->processInt(binson::INT8_MAX); }
 
     public function testIntegerMoreThanINT8_MAX()
-    { $this->testInt(binson::INT8_MAX+1); }
+    { $this->processInt(binson::INT8_MAX+1); }
     
     public function testIntegerINT8_MIN()
-    { $this->testInt(binson::INT8_MIN); }
+    { $this->processInt(binson::INT8_MIN); }
 
     public function testIntegerLessThanINT8_MIN()
-    { $this->testInt(binson::INT8_MIN-1); }
+    { $this->processInt(binson::INT8_MIN-1); }
 
 }
 

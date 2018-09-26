@@ -9,7 +9,7 @@ require_once(SRC_DIR . 'binson.php');
 */
 class StringParserTest extends TestCase
 {
-    private function testString(string $arg)
+    private function processString(string $arg)
     {
         $buf = "";
         $writer = new BinsonWriter($buf);
@@ -23,16 +23,16 @@ class StringParserTest extends TestCase
     }
 
     public function testStringEmpty()
-    { $this->testString(""); }
+    { $this->processString(""); }
 
     public function testStringBasic()
-    { $this->testString("abcd"); }
+    { $this->processString("abcd"); }
 
     public function testString_UTF8_()
-    { $this->testString("größer"); }
+    { $this->processString("größer"); }
 
     public function testStringLong()
-    { $this->testString(str_repeat("x", 1024*100)); }
+    { $this->processString(str_repeat("x", 1024*100)); }
 
 }
 

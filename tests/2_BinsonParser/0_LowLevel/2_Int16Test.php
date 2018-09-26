@@ -9,7 +9,7 @@ require_once(SRC_DIR . 'binson.php');
 */
 class Int16ParserTest extends TestCase
 {
-    private function testInt(int $arg)
+    private function processInt(int $arg)
     {
         $buf = "";
         $writer = new BinsonWriter($buf);
@@ -24,16 +24,16 @@ class Int16ParserTest extends TestCase
 
     
     public function testIntegerINT16_MAX()
-    { $this->testInt(binson::INT16_MAX); }
+    { $this->processInt(binson::INT16_MAX); }
 
     public function testIntegerMoreThanINT16_MAX()
-    { $this->testInt(binson::INT16_MAX+1); }
+    { $this->processInt(binson::INT16_MAX+1); }
     
     public function testIntegerINT16_MIN()
-    { $this->testInt(binson::INT16_MIN); }
+    { $this->processInt(binson::INT16_MIN); }
 
     public function testIntegerLessThanINT16_MIN()
-    { $this->testInt(binson::INT16_MIN-1); }
+    { $this->processInt(binson::INT16_MIN-1); }
 
 }
 
