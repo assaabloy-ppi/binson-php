@@ -853,9 +853,7 @@ class BinsonParser
         // later
     }
 
-
-    /*======= Private method implementations ====================================*/
-    public function tostr() : string
+    public function toString() : string
     {
         $str = '';
         $res = $this->advance(self::ADVANCE_ONE, null, binson::TYPE_OBJECT | binson::TYPE_ARRAY,
@@ -865,6 +863,8 @@ class BinsonParser
         return $str;
     }
 
+    /*======= Private method implementations ====================================*/
+
     public function deserialize() : array
     {
         $arr = [];
@@ -872,7 +872,8 @@ class BinsonParser
                                [$this, 'cbDeserializer'], $arr);
         if ($res)
             $res = $this->advance(self::ADVANCE_LEAVE_BLOCK, null, 0, [$this, 'cbDeserializer'], $arr);
-        return $arr['data'];
+
+        return $res? $arr['data'][0] : null;
     }
 
     private function requestStateTransition() : array
@@ -1135,19 +1136,20 @@ class BinsonParser
 
             case self::STATE_IN_ARRAY_BEGIN:
             case self::STATE_IN_OBJECT_BEGIN:
-                $param['parent'][] = $param['current'];
+                $param['parent'][] = &$param['current'];
                 $param['current'][] = [];
 
                 end($param['current']);                
                 $param['current'] = &$param['current'][key($param['current'])];
 
-                //$param['current'] = &$param['current'];
-
                 return true;
             case self::STATE_OUTOF_ARRAY:
             case self::STATE_OUTOF_OBJECT:
                 unset($param['current']);
-                $param['current'] = array_pop($param['parent']);
+                end($param['parent']);
+                $param['current'] = &$param['parent'][key($param['parent'])];
+                unset($param['parent'][key($param['parent'])]);
+                end($param['current']);
                 //debug_zval_dump($param['parent']);
 
                 //end($param['current']);
@@ -1155,24 +1157,26 @@ class BinsonParser
                 return true;
 
             case self::STATE_AT_ITEM_KEY:
-                $param .= '"'.$new_state['val'].'":';
+                //$param .= '"'.$new_state['val'].'":';
                 return true;
             case self::STATE_AT_VALUE:
-            //case self::STATE_IN_ARRAY:
             {
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
                     end($param['current']);
-                    $param['current'][] = 1;//$new_state['val'];
+                    $param['current'][] = $new_state['val'];
                     return true;
                 case binson::TYPE_DOUBLE:
                 case binson::TYPE_INTEGER:
-                    $param['current'][] = [1];//$new_state['val'];
+                    end($param['current']);
+                    $param['current'][] = $new_state['val'];
                     return true;
                 case binson::TYPE_STRING:
+                    end($param['current']);
                     $param['current'][] = $new_state['val'];
                     return true;
                 case binson::TYPE_BYTES:
+                    end($param['current']);
                     $param['current'][] = $new_state['val'];
                     return true;
     
@@ -1192,6 +1196,8 @@ class BinsonParser
 
     private function cbToString(?array $prev_state, &$param = null) : bool
     {        
+        static $local_comma = false;
+
         if (!is_string($param))
             throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbToString() require `string` parameter");
 
@@ -1202,24 +1208,29 @@ class BinsonParser
         switch ($new_state['id']) {
             case self::STATE_AT_OBJECT_:
             case self::STATE_AT_ARRAY_:
+                $param .= $local_comma? ',' : '';
             case self::STATE_IN_OBJECT_END_:
             case self::STATE_IN_ARRAY_END_:
                 return true;
 
-            case self::STATE_IN_ARRAY_BEGIN:
+            case self::STATE_IN_ARRAY_BEGIN:                
+                $local_comma = false;
                 //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 $param .= '[';
                 return true;
             case self::STATE_IN_OBJECT_BEGIN:
+                $local_comma = false;
                 //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 $param .= '{';
                 return true;
             case self::STATE_OUTOF_ARRAY:
                 $param .= ']';
+                $local_comma = true;
                 //$param .= ($_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 return true;
             case self::STATE_OUTOF_OBJECT:
                 $param .= '}';
+                $local_comma = true;
                 //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 return true;
             case self::STATE_AT_ITEM_KEY:
@@ -1233,6 +1244,9 @@ class BinsonParser
                     return true;
 
                 //$param .= ($prev_state['id'] & self::STATE_MASK_INNER) ? ',' : '';
+                $param .= $local_comma? ',' : '';
+                $local_comma = true;
+
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
                 case binson::TYPE_DOUBLE:
