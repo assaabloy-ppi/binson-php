@@ -28,10 +28,16 @@ class ObjectDeserializationTest extends TestCase
         $this->distill([binson::EMPTY_OBJECT]);  // [{}]
     }
 
-    public function testEmptyObjectInTwoArraya() 
+    public function testEmptyObjectInTwoArrays() 
     {
         $this->distill([[binson::EMPTY_OBJECT]]);  // [[{}]]
     }
+
+    public function testEmptySomeObjectsInTwoArrays() 
+    {
+        // [[{}],[{}],{}]
+        $this->distill([[binson::EMPTY_OBJECT], [binson::EMPTY_OBJECT],binson::EMPTY_OBJECT]);
+    }    
 
     public function testEmptyObjectInArrayAsValueOfObject() 
     {
@@ -78,23 +84,18 @@ class ObjectDeserializationTest extends TestCase
         $this->distill(['a'=>['a'=>[],'b'=>[]], 'b'=>['a'=>[],'b'=>[]]]);
     }
 
-   /* public function testAAA() 
-    {
-        //$this->distill(['a'=>['b'=>[binson::EMPTY_OBJECT]]]);
-        $this->distill(['b'=>[binson::EMPTY_OBJECT]]);  // {b:[{}]}
-    }*/
 
-   /* public function testNestedObjectsCombinationWithEmptyObjects() 
+    public function testNestedObjectsCombinationWithEmptyObjects() 
     {
         $this->distill(['a'=>['a'=>binson::EMPTY_OBJECT,'b'=>binson::EMPTY_OBJECT], 
                        'b'=>['a'=>binson::EMPTY_OBJECT,'b'=>binson::EMPTY_OBJECT]]);
     }
-*/
-    /*public function testNestedObjectsCombinationWithEmptyObjectsInArray() 
+
+    public function testNestedObjectsCombinationWithEmptyObjectsInArray() 
     {
         $this->distill(['a'=>['b'=>[binson::EMPTY_OBJECT],'c'=>[binson::EMPTY_OBJECT]], 
                        'd'=>['e'=>[binson::EMPTY_OBJECT],'f'=>[binson::EMPTY_OBJECT]]]);
-    }*/
+    }
 
     public function testObjectWithEmptyNames() 
     {

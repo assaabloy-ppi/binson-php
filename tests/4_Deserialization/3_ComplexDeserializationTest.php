@@ -8,14 +8,6 @@ require_once(SRC_DIR . 'binson.php');
 */
 class ComplexDeserializationTest extends TestCase
 {
-    public function testNestedEmptyObjectInsideArray() 
-    {
-        $buf = "";
-        $writer = new BinsonWriter($buf);
-
-        $writer->put([[null=>null]]);  // [{}]
-        $this->assertSame("\x42\x40\x41\x43", $writer->toBytes());
-    }
 
     public function testComplexObject() 
     {
