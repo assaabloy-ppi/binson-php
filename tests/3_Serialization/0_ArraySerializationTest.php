@@ -121,7 +121,6 @@ class ArraySerializationTest extends TestCase
         $this->assertSame("\x42\x42\x42\x14\x02\x78\x63\x43\x43\x14\x03\x65\x72\x72\x43", $writer->toBytes());
     }
 
-
 }
 
 ?>

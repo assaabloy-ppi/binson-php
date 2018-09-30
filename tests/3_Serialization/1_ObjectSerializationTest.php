@@ -13,7 +13,7 @@ class ObjectSerializationTest extends TestCase
         $buf = "";
         $writer = new BinsonWriter($buf);
 
-        $writer->put([null => null]);
+        $writer->put(binson::EMPTY_OBJECT);
         $this->assertSame("\x40\x41", $writer->toBytes());
     }
 
@@ -22,7 +22,7 @@ class ObjectSerializationTest extends TestCase
         $buf = "";
         $writer = new BinsonWriter($buf);
 
-        $writer->put([null => null], [null => null]);
+        $writer->put(binson::EMPTY_OBJECT, binson::EMPTY_OBJECT);
         $this->assertSame("\x40\x41\x40\x41", $writer->toBytes());
     }
 
@@ -31,7 +31,7 @@ class ObjectSerializationTest extends TestCase
         $buf = "";
         $writer = new BinsonWriter($buf);
 
-        $writer->put(['a' => [null => null]]);
+        $writer->put(['a' => binson::EMPTY_OBJECT]);
         $this->assertSame("\x40\x14\x01\x61\x40\x41\x41", $writer->toBytes());
     }
     

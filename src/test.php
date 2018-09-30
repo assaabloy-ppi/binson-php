@@ -12,7 +12,7 @@ $writer = new BinsonWriter($b);
 
 //$src = ["abc", "dcd", ["ddf",["xc"]], "err"];
 //$src = [[null=>null],1,true];
-$src = ["ac", [false],3,2];
+$src = ['a'=>[true]];
 //$src = [true];
 //["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7]
 // 401401614244107b140162100543 140162 45 140163 100741'
@@ -33,7 +33,7 @@ $p->reset();
 $aaa = $p->deserialize();
 
 print_r("json_of_deserialized:\t".json_encode($aaa).PHP_EOL);
-//var_dump($aaa);
+//var_dump($aaa);   
 //print_r($p->deserialize());
 
 //$p->advance_test1(BinsonParser::ADVANCE_TRAVERSAL, null, 0, null, null);

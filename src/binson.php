@@ -42,6 +42,11 @@ abstract class binson {
     const TYPE_STRING          = 0x0080;
     const TYPE_BYTES           = 0x0100;
 
+    const EMPTY_KEY            = -1;
+    const EMPTY_VAL            = null;
+    const EMPTY_ARRAY          = []; 
+    const EMPTY_OBJECT         = [binson::EMPTY_KEY => binson::EMPTY_VAL];
+
     // for debugging only
     public const DBG_INT_TO_TYPE_MAP = [
         0x0000 => 'TYPE_NONE',
@@ -74,7 +79,14 @@ abstract class binson {
         'max_string_len' => 10240,
         'max_bytes_len' => 10240,
         'max_field_count' => 1000,
-        'parser_int_overflow_action' => 'exception' // [exception|to_float]
+        'max_depth' => 32,
+        'parser_int_overflow_action' => 'exception',  // [exception|to_float]
+        
+        // check all string to be valid UTF8 during serialization, encode as BYTES if not. 
+        'serializer_bytes_fallback'  => true,
+        
+        // add single EMPTY_KEY => EMPTY_VAL item to empty OBJECT representation
+        'deserializer_add_empty_sign' => true
     ];
 }
 
@@ -277,9 +289,17 @@ class BinsonWriter
         {
             case "array":
                 $var = self::sortDeeply($var);
+
+                if (binson::EMPTY_ARRAY === $var)
+                    return $this->arrayBegin()->arrayEnd();                     
                 break;        
 
-            case "string":   return $this->putString($var);
+            case "string":
+            if ($this->config['serializer_bytes_fallback'] && !isUtf8($var))
+                return $this->putBytes($var);
+            else
+                return $this->putString($var);
+
             case "integer":  return $this->putInteger($var);
             case "double":   return $this->putDouble($var);
             case "boolean":  return $this->putBoolean($var);
@@ -288,9 +308,15 @@ class BinsonWriter
                 throw new BinsonException(binson::ERROR_WRONG_TYPE);                
         }
 
-        if (is_array($var) && empty($var)) {  // iterator won't iterate on empty array
-            return $this->arrayBegin()->arrayEnd();
-        }
+        // empty binson ARRAY detection
+        // BTW, iterator won't iterate on empty array
+
+
+            /// empty binson OBJECT detection
+        /*elseif (is_array($var) && $var === binson::EMPTY_OBJECT)
+        {
+            return $this->objectBegin()->objectEnd(); 
+        }*/
 
         $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var),
                                                     RecursiveIteratorIterator::SELF_FIRST);
@@ -300,8 +326,8 @@ class BinsonWriter
 
         foreach($iterator as $key => $value) {
             
-            if (is_array($value))
-                uksort($value, "strcmp");
+            //if (is_array($value))
+             //   uksort($value, "strcmp"); //// remove ????
 
             $depth = $iterator->getDepth();   
             
@@ -315,7 +341,8 @@ class BinsonWriter
             }          
         
             if ($depth > $last_depth) {  // new block detected
-                $block_type = (!is_int($key)) ? binson::TYPE_OBJECT : binson::TYPE_ARRAY;       
+                $block_type = (is_int($key) && $key !== binson::EMPTY_KEY) ?
+                                binson::TYPE_ARRAY :  binson::TYPE_OBJECT;       
                 $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayBegin() : $this->objectBegin();
                 $type_stack[] = $block_type;
             }            
@@ -330,10 +357,16 @@ class BinsonWriter
                 $this->putString($key);
             }
 
+            // empty binson ARRAY detection
             if (is_array($value) && empty($value))
             {
-              $this->arrayBegin()->arrayEnd(); 
+               $this->arrayBegin()->arrayEnd(); 
             }
+            // empty binson OBJECT detection
+            /*elseif (is_array($value) && $value === binson::EMPTY_OBJECT)
+            {
+                $this->objectBegin()->objectEnd(); 
+            }*/
             
             if (!is_array($value) && $value !== null)
             {
@@ -361,14 +394,8 @@ class BinsonWriter
 
     private function isArrayEmptyBinsonObject($var) : bool
     {
-        // check for [null => null]
-        if (!is_array($var))
-            return false;
-
-        if (count($var) == 1 && key($var) == null && $var[key($var)] == null)
-            return true;
-
-        return false;
+        return (is_array($var) && count($var) === 1 &&
+                 isKeyValEmptyMarker(key($var), $var[key($var)]))? true : false;
     }
 
     private function isSerializable($var) : bool
@@ -382,11 +409,8 @@ class BinsonWriter
                                                      RecursiveIteratorIterator::SELF_FIRST);
                 foreach($iterator as $key => $value)
                 {   
-                    if ($key == null && $value == null)  // specific case: 'null => null' means object instead of array
+                    if (isKeyValEmptyMarker($key, $value))
                         return true;
-
-                    //if ( !(is_int($key) && is_string($var) && is_array($var)) || !$this->isSerializable($value))
-                    //    return false;
                 }             
                 return true;
             }
@@ -514,6 +538,8 @@ class BinsonParser
     private const STATE_DONE            = 0x0800;
     private const STATE_ERROR           = 0x1000;
     private const STATE_NO_RULE         = 0x2000;  // missing state transition rule
+
+    private const STATE_MASK_BLOCK_BEGIN = self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN;
 
     private const STATE_MASK_NEED_INPUT = self::STATE_UNDEFINED | 
                                           self::STATE_AT_VALUE | self::STATE_AT_ITEM_KEY | 
@@ -863,8 +889,6 @@ class BinsonParser
         return $str;
     }
 
-    /*======= Private method implementations ====================================*/
-
     public function deserialize() : array
     {
         $arr = [];
@@ -874,7 +898,9 @@ class BinsonParser
             $res = $this->advance(self::ADVANCE_LEAVE_BLOCK, null, 0, [$this, 'cbDeserializer'], $arr);
 
         return $res? $arr['data'][0] : null;
-    }
+    }    
+
+    /*======= Private method implementations ====================================*/
 
     private function requestStateTransition() : array
     {
@@ -926,8 +952,8 @@ class BinsonParser
             $state_update['id'] = $new_state_id;
         }
 
-        if ($state_update['id'] & self::STATE_AT_ITEM_KEY)
-            $state_update['name'] = $state_update['val'];
+        //if ($state_update['id'] & self::STATE_AT_ITEM_KEY)
+        //    $state_update['name'] = $state_update['val'];
 
         //if ($state_update['id'] & self::STATE_AT_VALUE)
         //    $state_update[''] = $state_update['val'];
@@ -943,6 +969,10 @@ class BinsonParser
     {
         $prev_state = $this->state['top'];
         $this->state[] = $state_update; // copy id, type, value
+
+        //if (isset($this->state['top']['name']))
+        //echo 'name'.$this->state['top']['name'].PHP_EOL;
+
         return $cb? $cb($prev_state, $param) : false;        
     }
 
@@ -956,7 +986,18 @@ class BinsonParser
                 return false;
             
             $state_req = $this->requestStateTransition();
-            $update_req = array_replace($this->state['top'], $state_req);
+            //$update_req = $state_req + array_intersect_key($this->state['top'], 
+            //                                ['type'=>0, 'block_type'=>0]);
+
+            $update_req = array_replace($this->state['top'], $state_req); //?? improve this
+            
+            // quick fix - remove val & name keys from request when dive into new block
+            //if ($update_req['id'] & self::STATE_IN_ARRAY_BEGIN)
+            //{            
+            //    unset($update_req['name']);
+           // }
+
+
             $cb_called = false;
 
             switch ($state_req['id']) {
@@ -974,22 +1015,21 @@ class BinsonParser
 
                 case self::STATE_AT_OBJECT_:
                 case self::STATE_AT_ARRAY_:
-                case self::STATE_AT_ITEM_KEY:
                 case self::STATE_AT_VALUE:
                 case self::STATE_IN_OBJECT_END_:
                 case self::STATE_IN_ARRAY_END_:                
                     break;
 
-                case self::STATE_AT_VALUE:
-                    //$update_req['val'] = $update_req['val'];
-                    //$this->state[] = $update_req;    
+                case self::STATE_AT_ITEM_KEY:                    
+                    $this->state['name'] = $update_req['name'] = $update_req['val'];
                     break;
 
+                case self::STATE_IN_ARRAY_BEGIN:                
                 case self::STATE_IN_OBJECT_BEGIN:
-                case self::STATE_IN_ARRAY_BEGIN:
                     $this->depth++;
-                    $update_req['block_type'] = $update_req['type'];
-                    $this->state[] = $update_req;
+                    //unset($update_req['name']);         
+                    //unset($this->state['name']);
+                    $this->state['block_type'] = $update_req['block_type'] = $update_req['type'];
                     break;
                     
                 case self::STATE_OUTOF_OBJECT:
@@ -1134,50 +1174,51 @@ class BinsonParser
             case self::STATE_IN_ARRAY_END_:
                 return true;
 
-            case self::STATE_IN_ARRAY_BEGIN:
             case self::STATE_IN_OBJECT_BEGIN:
-                $param['parent'][] = &$param['current'];
-                $param['current'][] = [];
+            case self::STATE_IN_ARRAY_BEGIN:
+                $param['parent'][] = &$param['current'];    
+
+                $container = ($new_state['id'] === self::STATE_IN_OBJECT_BEGIN)?
+                                binson::EMPTY_OBJECT : binson::EMPTY_ARRAY;
+
+                if (isset($new_state['name']))
+                    $param['current'][$new_state['name']] = $container;
+                else
+                    $param['current'][] = $container;
 
                 end($param['current']);                
                 $param['current'] = &$param['current'][key($param['current'])];
-
                 return true;
+                
             case self::STATE_OUTOF_ARRAY:
             case self::STATE_OUTOF_OBJECT:
+                if (count($param['current']) > 1)
+                    unset($param['current'][binson::EMPTY_KEY]); // remove empty object marker
+                    
                 unset($param['current']);
                 end($param['parent']);
                 $param['current'] = &$param['parent'][key($param['parent'])];
                 unset($param['parent'][key($param['parent'])]);
                 end($param['current']);
-                //debug_zval_dump($param['parent']);
-
-                //end($param['current']);
-
                 return true;
 
             case self::STATE_AT_ITEM_KEY:
                 //$param .= '"'.$new_state['val'].'":';
+                //if ($param['current'])   ffffffffffff
                 return true;
             case self::STATE_AT_VALUE:
-            {
+            {                
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
-                    end($param['current']);
-                    $param['current'][] = $new_state['val'];
-                    return true;
                 case binson::TYPE_DOUBLE:
                 case binson::TYPE_INTEGER:
+                case binson::TYPE_STRING:                
+                case binson::TYPE_BYTES:                
                     end($param['current']);
-                    $param['current'][] = $new_state['val'];
-                    return true;
-                case binson::TYPE_STRING:
-                    end($param['current']);
-                    $param['current'][] = $new_state['val'];
-                    return true;
-                case binson::TYPE_BYTES:
-                    end($param['current']);
-                    $param['current'][] = $new_state['val'];
+                    if (isset($new_state['name']))
+                        $param['current'][$new_state['name']] = $new_state['val'];
+                    else
+                        $param['current'][] = $new_state['val'];
                     return true;
     
                 default: /* we should not get here */
@@ -1440,5 +1481,27 @@ function util_pack_size($val, int $type_hint) : string
 
     return chr($val_bytes[0]) . substr(pack($val_pack_code, $val), 0, $size);
 }
+
+function isKeyValEmptyMarker($key, $val)
+{
+    return ($key === binson::EMPTY_KEY && $val === binson::EMPTY_VAL)? true : false; 
+}
+
+function isUtf8($string) {
+    if (function_exists("mb_check_encoding") && is_callable("mb_check_encoding")) {
+        return mb_check_encoding($string, 'UTF8');
+    }
+
+    return preg_match('%^(?:
+          [\x09\x0A\x0D\x20-\x7E]            # ASCII
+        | [\xC2-\xDF][\x80-\xBF]             # non-overlong 2-byte
+        |  \xE0[\xA0-\xBF][\x80-\xBF]        # excluding overlongs
+        | [\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}  # straight 3-byte
+        |  \xED[\x80-\x9F][\x80-\xBF]        # excluding surrogates
+        |  \xF0[\x90-\xBF][\x80-\xBF]{2}     # planes 1-3
+        | [\xF1-\xF3][\x80-\xBF]{3}          # planes 4-15
+        |  \xF4[\x80-\x8F][\x80-\xBF]{2}     # plane 16
+    )*$%xs', $string);
+} 
 
 ?>

@@ -4,26 +4,17 @@ use PHPUnit\Framework\TestCase;
 require_once(SRC_DIR . 'binson.php');
 
 /**
-* @group serializer
+* @group deserializer
 */
-class ComplexSerializationTest extends TestCase
+class ComplexDeserializationTest extends TestCase
 {
     public function testNestedEmptyObjectInsideArray() 
     {
         $buf = "";
         $writer = new BinsonWriter($buf);
 
-        $writer->put([binson::EMPTY_OBJECT]);  // [{}]
+        $writer->put([[null=>null]]);  // [{}]
         $this->assertSame("\x42\x40\x41\x43", $writer->toBytes());
-    }
-
-    public function testNestedMoreEmptyObjectsInsideArray() 
-    {
-        $buf = "";
-        $writer = new BinsonWriter($buf);
-
-        $writer->put([binson::EMPTY_OBJECT, [binson::EMPTY_OBJECT]]);  // [{}, [{}]]
-        $this->assertSame("\x42\x40\x41\x42\x40\x41\x43\x43", $writer->toBytes());
     }
 
     public function testComplexObject() 
