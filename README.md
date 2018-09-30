@@ -5,6 +5,7 @@ Quick start
 -----------
 
 Just place `src/binson.php` into your project's source directory and "require" it.
+
 You need nothing to know about binson to start using it:
 
 ```php
@@ -222,10 +223,9 @@ Source:  [wikipedia](https://en.wikipedia.org/wiki/Double-precision_floating-poi
 
 
 
-Changelog
-=========
+## Changelog
 
-2018-09-30
------------
+#### 2018-09-30
+
 
 * top-level functions `binson_encode()` and `binson_decode()` are implemented (as wrappers around `BinsonWriter` & `BinsonParser`)
