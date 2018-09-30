@@ -5,6 +5,25 @@ Quick start
 -----------
 
 Just place `src/binson.php` into your project's source directory and "require" it.
+You need nothing to know about binson to start using it:
+
+```php
+$src = ["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7];
+
+$binson_raw = binson_encode($src);      // encode arbitrary associative array to binary string 
+$decoded = binson_decode($binson_raw);  // decode, if possible, from binson-encoded binary string
+
+// now $decoded should be equal to $src
+```
+
+To check if random binary string represents valid well-formed binson object:
+
+```php
+if (null !== binson_decode($raw))
+{
+    echo 'valid!';
+}
+```
 
 Compatibility
 --------------
@@ -15,9 +34,7 @@ Note: no PHP5 compatibility (by design)
 
 Current status
 --------------
-* Basic `BinsonWriter` & `BinsonParser` API used in Java/C ports works as expected with no known issues. 
-* (De-)serialization is NOT ready to use (some issue fixes required).
-* `binson_encode()` and `binson_decode()` API calls are NOT ready.
+* `binson_encode()` and `binson_decode()` API calls are ready!.
 * Major code cleanups required
 * Major code documentation required (? follow [WordPress inline documentation best practices](https://make.wordpress.org/core/handbook/best-practices/inline-documentation-standards/php/))
 * Unit test coverage improvement is still required.
@@ -35,7 +52,9 @@ Known ports
 Features
 -----------
 * Iterative parsing (no recursion)
-* Declarative "state transition matrix" based parsing algorithm
+* No extension dependencies (should work with any custom PHP7 build)
+* Instant serialization/deserialization to/from PHP native arrays
+* Declarative "state transition matrix" parsing algorithm
 * Error handling is PHP7 exception based (see `BinsonException` class)
 * Limited 64bit integer parsing on php32 builds supported (see [below](#limitation-64bit-integer-support))
 
@@ -54,6 +73,8 @@ Now run PHPUnit tests:
 ```
 make test.writer
 make test.parser
+make test.serializer
+make test.deserializer
 ```
 
 BinsonWriter class usage examples:
@@ -80,10 +101,10 @@ $writer->put($arr, ["a"=>1, "b"=>"c"], true);
 &nbsp;  
 Specifying binson OBJECT instead of ARRAY:
 ```PHP
-$writer->put([]);                // [] - empty binson array
-$writer->put([null => null]);    // {} - empty binson object
-$writer->put([[]]);              // [[]] - nested empty arrays
-$writer->put([[null => null]]);  // [{}] - empty object inside the empty array
+$writer->put([]);                      // [] - empty binson array
+$writer->put([[]]);                    // [[]] - nested empty arrays
+$writer->put(binson::EMPTY_OBJECT);    // {} - empty binson object
+$writer->put([binson::EMPTY_OBJECT]);  // [{}] - empty object inside the empty array
 ```
 &nbsp;  
 Low-level API:
@@ -199,3 +220,12 @@ There are no guarantee to preserve all significant digits for numbers above 2^53
 
 Source:  [wikipedia](https://en.wikipedia.org/wiki/Double-precision_floating-point_format#IEEE_754_double-precision_binary_floating-point_format:_binary64)
 
+
+
+Changelog
+=========
+
+2018-09-30
+-----------
+
+* top-level functions `binson_encode()` and `binson_decode()` are implemented (as wrappers around `BinsonWriter` & `BinsonParser`)

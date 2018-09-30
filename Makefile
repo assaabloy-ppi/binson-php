@@ -19,5 +19,8 @@ update: ## Update current project dependencies
 test.all: ## Run ALL unit & functional tests for 'binson-php' project
 	vendor/bin/phpunit -v --bootstrap ./tests/bootstrap_native.phpb --testdox tests
 
-test.%: ## Run some tests, specified by group filter: [lowlevel|writer|parser|serializer|deserializer|functional|fuzzy] 
+test.%: ## Run some tests, specified by group filter: [lowlevel|writer|parser|serializer|deserializer|functional|fuzzy]
 	vendor/bin/phpunit -v --bootstrap ./tests/bootstrap_native.phpb --testdox tests --group $(*)
+
+test.overnight: ## Run some heavy fuzzy tests in continuous mode
+	php ./tests/5_Functional/FuzzyConsistancyTestStandalone.php

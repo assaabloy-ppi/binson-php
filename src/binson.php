@@ -90,6 +90,7 @@ abstract class binson {
     ];
 }
 
+
 class BinsonException extends Exception
 {
     public function __construct($code, $message = "", Throwable $previous = null)
@@ -151,6 +152,36 @@ class BinsonLogger {
 
 };
 
+// high level wrapper
+function binson_encode(array $src, array $cfg = null) : ?string
+{
+    $writer = new BinsonWriter();
+
+    if (is_array($cfg))
+        $writer->config = $cfg;
+
+    $writer->put($src);        
+    return $writer->toBytes();
+}
+
+// high level wrapper
+function binson_decode( string $raw, array $cfg = null ) : ?array
+{
+    $parser = new BinsonParser($raw);
+
+    if (is_array($cfg))
+        $writer->config = $cfg;
+
+    try
+    {
+        return $parser->deserialize();
+    }
+    catch (Throwable $t)
+    {
+        // add here some error reporting to user (e.g with binson_get_last_error() ? )
+        return null;
+    }
+}
 
 class BinsonWriter
 {
@@ -161,7 +192,11 @@ class BinsonWriter
     public function __construct(string &$dst = null)
     {
         $this->config = binson::CFG_DEFAULT;
-    	$this->data = &$dst ?? '';
+        $this->data = &$dst ?? '';
+        
+        if(!is_string($this->data))
+            $this->data = '';
+
         $this->data_len = strlen($this->data);
     }
 
