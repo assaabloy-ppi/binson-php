@@ -52,6 +52,11 @@ class ObjectDeserializationTest extends TestCase
     {
         $this->distill(['a'=>[[true]]]);   // {'a':[[true]]}
     }
+    
+    public function testObjectOneItemInArray2Wrap2()  
+    {
+        $this->distill(['a'=>[[true],[false]]]);   // {'a':[[true],[false]]}
+    }
 
     public function testNestedObjects() 
     {

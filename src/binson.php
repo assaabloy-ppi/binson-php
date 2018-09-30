@@ -1165,6 +1165,8 @@ class BinsonParser
         }            
 
         $new_state = $this->state['top'];
+        $parent_state = $this->state['parent'];
+
         $depth = $this->depth;
 
         switch ($new_state['id']) {
@@ -1178,10 +1180,10 @@ class BinsonParser
             case self::STATE_IN_ARRAY_BEGIN:
                 $param['parent'][] = &$param['current'];    
 
-                $container = ($new_state['id'] === self::STATE_IN_OBJECT_BEGIN)?
+                $container = ($new_state['block_type'] === binson::TYPE_OBJECT)?
                                 binson::EMPTY_OBJECT : binson::EMPTY_ARRAY;
 
-                if (isset($new_state['name']))
+                if ($parent_state['block_type'] === binson::TYPE_OBJECT)
                     $param['current'][$new_state['name']] = $container;
                 else
                     $param['current'][] = $container;
@@ -1215,7 +1217,7 @@ class BinsonParser
                 case binson::TYPE_STRING:                
                 case binson::TYPE_BYTES:                
                     end($param['current']);
-                    if (isset($new_state['name']))
+                    if (isset($new_state['name']) && $new_state['block_type'] === binson::TYPE_OBJECT)
                         $param['current'][$new_state['name']] = $new_state['val'];
                     else
                         $param['current'][] = $new_state['val'];
