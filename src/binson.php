@@ -86,7 +86,10 @@ abstract class binson {
         'serializer_bytes_fallback'  => true,
         
         // add single EMPTY_KEY => EMPTY_VAL item to empty OBJECT representation
-        'deserializer_add_empty_sign' => true
+        'deserializer_add_empty_sign' => true,
+        
+        //
+        'enable_numeric_fieldnames' => false
     ];
 }
 
@@ -343,16 +346,6 @@ class BinsonWriter
                 throw new BinsonException(binson::ERROR_WRONG_TYPE);                
         }
 
-        // empty binson ARRAY detection
-        // BTW, iterator won't iterate on empty array
-
-
-            /// empty binson OBJECT detection
-        /*elseif (is_array($var) && $var === binson::EMPTY_OBJECT)
-        {
-            return $this->objectBegin()->objectEnd(); 
-        }*/
-
         $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var),
                                                     RecursiveIteratorIterator::SELF_FIRST);
         $last_depth = -1;
@@ -382,47 +375,36 @@ class BinsonWriter
                 $type_stack[] = $block_type;
             }            
             elseif ($depth < $last_depth) {  // block end detected              
-              $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
-              $block_type = array_pop($type_stack);              
+                $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
+                $block_type = array_pop($type_stack);              
             }        
         
+            if ($value !== null && $block_type === binson::TYPE_OBJECT)
+            {   
+                // numeric fields support workaround
+                if (strlen($key) > 1 && $key[-1] === '.') 
+                {
+                    $key2 = substr($key, 0, -1);
+                    if ((string) (int) $key2 === $key2) // valid integer representation
+                        $key = $key2;
+                }
+
+                $this->putName($key); 
+            }
+            
             if (is_array($value) )
             {
-              if ($block_type == binson::TYPE_OBJECT)
-                $this->putString($key);
+              if ($value === [])
+                $this->arrayBegin()->arrayEnd(); 
             }
+            elseif ($value !== null)  // $value is NOT array
+                $this->putOne($value);
 
-            // empty binson ARRAY detection
-            if (is_array($value) && empty($value))
-            {
-               $this->arrayBegin()->arrayEnd(); 
-            }
-            // empty binson OBJECT detection
-            /*elseif (is_array($value) && $value === binson::EMPTY_OBJECT)
-            {
-                $this->objectBegin()->objectEnd(); 
-            }*/
-            
-            if (!is_array($value) && $value !== null)
-            {
-              if ($block_type == binson::TYPE_OBJECT)
-                $this->putString($key);
-
-              $this->putOne($value);
-            }            
-
-            ////if ($last_depth - $depth > 1)
-             //$last_depth--;
-            //else 
-             $last_depth = $depth;
-             
+            $last_depth = $depth;
         }
 
         while ($block_type = array_pop($type_stack))
-        {            
             $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
-            //$last_depth--;
-        }
 
         return $this;
     }
@@ -1219,7 +1201,7 @@ class BinsonParser
                                 binson::EMPTY_OBJECT : binson::EMPTY_ARRAY;
 
                 if ($parent_state['block_type'] === binson::TYPE_OBJECT)
-                    $param['current'][$new_state['name']] = $container;
+                    $param['current'][fixNumField($new_state['name'])] = $container;
                 else
                     $param['current'][] = $container;
 
@@ -1253,7 +1235,7 @@ class BinsonParser
                 case binson::TYPE_BYTES:                
                     end($param['current']);
                     if (isset($new_state['name']) && $new_state['block_type'] === binson::TYPE_OBJECT)
-                        $param['current'][$new_state['name']] = $new_state['val'];
+                        $param['current'][fixNumField($new_state['name'])] = $new_state['val'];
                     else
                         $param['current'][] = $new_state['val'];
                     return true;
@@ -1463,7 +1445,7 @@ class BinsonParser
 
         $chunk = substr($this->data, $this->idx, $size);
         
-        if (empty($chunk))
+        if ($chunk === '')
             throw new BinsonException(binson::ERROR_RANGE);
 
         if (!$peek)
@@ -1522,6 +1504,11 @@ function util_pack_size($val, int $type_hint) : string
 function isKeyValEmptyMarker($key, $val)
 {
     return ($key === binson::EMPTY_KEY && $val === binson::EMPTY_VAL)? true : false; 
+}
+
+function fixNumField(string $name) : string
+{
+    return ((string) (int) $name === $name)? $name.'.' : $name;
 }
 
 function isUtf8($string) {

@@ -12,7 +12,7 @@ $writer = new BinsonWriter($b);
 
 //$src = ["abc", "dcd", ["ddf",["xc"]], "err"];
 //$src = [[null=>null],1,true];
-$src = ['a'=>[[true]]];
+$src = ['0.' => true];
 //$src = [true];
 //["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7]
 // 401401614244107b140162100543 140162 45 140163 100741'

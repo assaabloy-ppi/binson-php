@@ -44,6 +44,24 @@ class ObjectSerializationTest extends TestCase
         $this->assertSame("\x40\x14\x01\x61\x44\x41", $writer->toBytes());
     }
 
+    public function testObjectWithNumericFieldname() 
+    {
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $writer->put(['123.' => true]);
+        $this->assertSame("\x40\x14\x03\x31\x32\x33\x44\x41", $writer->toBytes());
+    }
+
+    public function testObjectWithNumericFieldnameZero() 
+    {
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $writer->put(['0.' => true]);
+        $this->assertSame("\x40\x14\x01\x30\x44\x41", $writer->toBytes());
+    }
+
     public function testLeavingArrayToObject() 
     {
         $buf = "";

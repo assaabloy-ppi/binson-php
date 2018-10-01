@@ -8,7 +8,7 @@ require_once(SRC_DIR . 'binson.php');
 */
 class FieldOrderDeserializationTest extends TestCase
 {
-
+    // cases with numeric fields, etc
 }
 
 ?>

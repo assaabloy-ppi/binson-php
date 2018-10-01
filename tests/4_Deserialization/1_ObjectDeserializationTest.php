@@ -49,6 +49,21 @@ class ObjectDeserializationTest extends TestCase
         $this->distill(['a'=>true]);
     }
 
+    public function testObjectOneItemNumericFieldname() 
+    {
+        $this->distill(['123.' => true]);
+    }    
+
+    public function testObjectOneItemNumericFieldnameZero() 
+    {
+        $this->distill(['0.' => 0 ]);
+    }        
+
+    public function testObjectOneItemNumericFieldnameMixed() 
+    {        
+        $this->distill(['1.' => '0.', '123.' => '123', '7.' => '7']);
+    }    
+
     public function testObjectOneItemInArrayWrap()  
     {
         $this->distill(['a'=>[true]]);   // {'a':[true]}
