@@ -78,6 +78,13 @@ make test.serializer
 make test.deserializer
 ```
 
+Native array serialization constraints:
+---------------------------
+Not all arbitrary multilevel arrays are serializable. Next rules should be applied to make sure array is serializer-compatible:
+* For values only `bool`, `integer`, `float`, `string`, `array` typed members are allowed.
+* For field names only `string` is allowed. Numeric field names must have dot suffix. E.g. PHP array `['3.' => true]` will be translated to binson object `{'3' => true}`, then to raw byte sequence: `\x40\x14\x01\x33\x44\x41`.
+
+
 BinsonWriter class usage examples:
 -----------
 

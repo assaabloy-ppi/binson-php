@@ -35,7 +35,7 @@ class MyFuzzyConsistencyTest
         $binson_raw = binson_encode($arr);
         $decoded = binson_decode($binson_raw); 
 
-        return json_encode($arr) === json_encode($decoded);//$arr === $decoded;
+        return $arr === $decoded && json_encode($arr) === json_encode($decoded);
     }
 
     public function runNext() : bool
@@ -65,7 +65,7 @@ class MyFuzzyConsistencyTest
     public function resetArraySample()
     {
         $this->level = 1;
-        $this->iter_per_level = 10*1000;
+        $this->iter_per_level = 100*1000;
     }
 
     /******* Array generation related methods ****************/
@@ -90,7 +90,7 @@ class MyFuzzyConsistencyTest
         $key = '';
         $pool = array_merge(range(0,9), range('a', 'z'),range('A', 'Z'));
 
-        for($i=0; $i < $this->level*2; $i++) {
+        for($i=0; $i < $this->level+1; $i++) {
             $key .= $pool[mt_rand(0, count($pool) - 1)];
         }
         return $key;
@@ -110,19 +110,19 @@ class MyFuzzyConsistencyTest
         if ($type === binson::TYPE_NONE || $current_depth == 0)
             $type = rand(0, 1)? binson::TYPE_ARRAY : binson::TYPE_OBJECT;
 
-        $items = rand(1, $this->level) + 1;
+        $items = rand(0, $this->level+1);
         for ($i=0; $i<$items; $i++)
         {
             while (true)
             {
-                switch (rand(0,7))
+                switch (rand(0, 2+$this->level))
                 {
 
                         case 0: // nested
                         case 1: // nested
                         case 2: // nested                                                
                             if ($current_depth > 10)
-                                continue;
+                                break 2;
                                 
                             $item = $this->buildArraySample(binson::TYPE_NONE, $current_depth+1);
                             break 2;
@@ -139,9 +139,9 @@ class MyFuzzyConsistencyTest
                             $item = $this->genInteger();
                             break 2;
 
-                        //case 6: // double                                        
-                        //    $item = $this->genDouble();
-                        //    break 2;
+                        case 6: // double                                        
+                            $item = $this->genDouble();
+                            break 2;
 
                         case 7: // string                    
                             $item = $this->genString();
@@ -152,18 +152,22 @@ class MyFuzzyConsistencyTest
                         //    break 2;
 
                         default:
-                        continue;
+                        break 2;
                 }
             }
 
-            if ($type === binson::TYPE_OBJECT)
-                $arr[$this->genString()] = $item;
-            else
-                $arr[] = $item;
+            if (isset($item))
+            {
+                if ($type === binson::TYPE_OBJECT)
+                    $arr[fixNumField($this->genString())] = $item;
+                else
+                    $arr[] = $item;
+
+                unset($item);  
+            }
 
         }
-
-        unset($item);        
+      
         uksort($arr, "strcmp");
 
         if ($current_depth === 0)
@@ -190,16 +194,16 @@ $json_str = '';
 
 foreach($t->arrayGenerator() as $arr)
 {
-    echo round(memory_get_usage()/1048576,2)." megabytes".PHP_EOL; 
+    //echo round(memory_get_usage()/1048576,2)." megabytes".PHP_EOL; 
     $json_str = json_encode($arr);
     if (!is_string($json_str))  // unable to serialize to json
     {
         var_dump($arr);
-        continue;
+        return;
     }
 
     //echo "Lvl: ".$t->level.", sample: ".substr($json_str, 0, 60)." ...".PHP_EOL;
-    echo "Lvl: ".$t->level.", sample: ".$json_str." ...".PHP_EOL;
+    echo "Lvl: ".$t->level.", sample: ".$json_str.PHP_EOL.PHP_EOL;
 
     try{    
       if (!$t->testIt($arr))
