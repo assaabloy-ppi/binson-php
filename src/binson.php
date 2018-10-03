@@ -89,7 +89,9 @@ abstract class binson {
         'deserializer_add_empty_sign' => true,
         
         //
-        'enable_numeric_fieldnames' => false
+        'enable_numeric_fieldnames' => false,
+
+        'serializer_sort_fields'  => false,
     ];
 }
 
@@ -186,12 +188,335 @@ function binson_decode( string $raw, array $cfg = null ) : ?array
     }
 }
 
-class BinsonWriter
+class BinsonProcessor
 {
-    public $config;    
-    private $data_len;
-	private $data;
+    // for debugging only
+    const DBG_INT_TO_STATE_MAP = [
+        0x0001 => 'STATE_UNDEFINED',
+        0x0002 => 'STATE_AT_OBJECT_',
+        0x0004 => 'STATE_AT_ARRAY_',
+        0x0008 => 'STATE_AT_ITEM_KEY',
+        0x0010 => 'STATE_AT_VALUE',
+        0x0020 => 'STATE_IN_OBJECT_BEGIN',
+        0x0040 => 'STATE_IN_OBJECT_END_',
+        0x0080 => 'STATE_IN_ARRAY_BEGIN',
+        0x0100 => 'STATE_IN_ARRAY_END_',
+        0x0200 => 'STATE_OUTOF_OBJECT',
+        0x0400 => 'STATE_OUTOF_ARRAY',
+        0x0800 => 'STATE_DONE',
+        0x1000 => 'STATE_ERROR',
+        0x2000 => 'STATE_NO_RULE'
+    ];
+
+    // Suffix "_" means helper state: no new data required to make 
+    // transition from current state to next state
+     const STATE_UNDEFINED       = 0x0001;  // before any parsing
+     const STATE_AT_OBJECT_      = 0x0002;  // positioned at object start
+     const STATE_AT_ARRAY_       = 0x0004;  // positioned at array start
+     const STATE_AT_ITEM_KEY     = 0x0008;  // positioned at "name" of "name:value" pair
+     const STATE_AT_VALUE        = 0x0010;  // positioned at primitive value of array or "name:value" pair
+     const STATE_IN_OBJECT_BEGIN = 0x0020;  // just entered current object
+     const STATE_IN_OBJECT_END_  = 0x0040;  // end of object detected    
+     const STATE_IN_ARRAY_BEGIN  = 0x0080;  // just entered current array
+     const STATE_IN_ARRAY_END_   = 0x0100;  // end of array detected
+     const STATE_OUTOF_OBJECT    = 0x0200;  // just leaved object, but not moved further
+     const STATE_OUTOF_ARRAY     = 0x0400;  // just leaved array, but not moved further
+
+     const STATE_DONE            = 0x0800;
+     const STATE_ERROR           = 0x1000;
+     const STATE_NO_RULE         = 0x2000;  // missing state transition rule
+
+     const STATE_MASK_BLOCK_BEGIN = self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN;
+
+     const STATE_MASK_NEED_INPUT = self::STATE_UNDEFINED | 
+                                          self::STATE_AT_VALUE | self::STATE_AT_ITEM_KEY | 
+                                          self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN |
+                                          self::STATE_OUTOF_OBJECT | self:: STATE_OUTOF_ARRAY;
+     const STATE_MASK_HELPER = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
+                                      self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
+
+    /* states are ok to stop on, when ADVANCE_NEXT is applied  */
+     const STATE_MASK_NEXT = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
+                                    self::STATE_AT_VALUE  |
+                                    self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
+
+    // EndOfBlock                                        
+     const STATE_MASK_EOB = self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
+
+     const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR | self::STATE_NO_RULE;
+
+    const TYPE_MASK_VALUE     = binson::TYPE_BOOLEAN | binson::TYPE_INTEGER |
+                                binson::TYPE_DOUBLE | binson::TYPE_STRING | binson::TYPE_BYTES;
     
+
+    const ADVANCE_ONE           = 0x01;  /* one step, traversal */
+    const ADVANCE_NEXT          = 0x02;  /* traversal until depth become same as initial */
+    const ADVANCE_LEAVE_BLOCK   = 0x04;  /* traversal until depth become less than initial */
+
+    /* Priority=2. Default state transition matrix */
+     const BLOCK_TYPE_TO_STATE_MX = [
+        binson::TYPE_NONE => [ // top level
+            self::STATE_AT_OBJECT_      =>  self::STATE_IN_OBJECT_BEGIN,            
+            self::STATE_AT_ARRAY_       =>  self::STATE_IN_ARRAY_BEGIN,            
+            self::STATE_OUTOF_OBJECT    =>  self::STATE_DONE,
+            self::STATE_OUTOF_ARRAY     =>  self::STATE_DONE,          
+            self::STATE_DONE            =>  self::STATE_DONE,
+            self::STATE_ERROR           =>  self::STATE_ERROR
+        ],
+        binson::TYPE_OBJECT => [
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_OBJECT_       =>  self::STATE_IN_OBJECT_BEGIN,
+            self::STATE_AT_ARRAY_        =>  self::STATE_IN_ARRAY_BEGIN,
+            self::STATE_AT_ITEM_KEY      =>  self::STATE_AT_VALUE,
+            self::STATE_AT_VALUE         =>  self::STATE_AT_ITEM_KEY,
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_AT_ITEM_KEY,
+            self::STATE_IN_OBJECT_END_   =>  self::STATE_OUTOF_OBJECT,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_END_    =>  self::STATE_ERROR,
+            self::STATE_OUTOF_OBJECT    =>  self::STATE_AT_ITEM_KEY,
+            self::STATE_OUTOF_ARRAY     =>  self::STATE_AT_ITEM_KEY,          
+            self::STATE_DONE            =>  self::STATE_DONE,
+            self::STATE_ERROR           =>  self::STATE_ERROR
+        ],
+        binson::TYPE_ARRAY => [
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_OBJECT_       =>  self::STATE_IN_OBJECT_BEGIN,
+            self::STATE_AT_ARRAY_        =>  self::STATE_IN_ARRAY_BEGIN,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
+            self::STATE_AT_VALUE         =>  self::STATE_AT_VALUE,
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
+            self::STATE_IN_OBJECT_END_   =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
+            self::STATE_IN_ARRAY_END_    =>  self::STATE_OUTOF_ARRAY,
+            self::STATE_OUTOF_OBJECT    =>  self::STATE_AT_VALUE,
+            self::STATE_OUTOF_ARRAY     =>  self::STATE_AT_VALUE,          
+            self::STATE_DONE            =>  self::STATE_DONE,
+            self::STATE_ERROR           =>  self::STATE_ERROR            
+        ]
+    ];
+
+    /* Priority=1. Default state transition matrix: maps newly consumed chunk's type to new state */
+     const NEW_TYPE_TO_STATE_MX = [   
+        binson::TYPE_OBJECT => [
+            self::STATE_UNDEFINED       =>  self::STATE_AT_OBJECT_,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_OBJECT_,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_OBJECT_,
+                                                binson::TYPE_ARRAY  => self::STATE_AT_OBJECT_],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_OBJECT_,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,
+                                                binson::TYPE_ARRAY  => self::STATE_AT_OBJECT_],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                                binson::TYPE_ARRAY  => self::STATE_AT_OBJECT_] 
+        ],                            
+        binson::TYPE_OBJECT_END => [
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_IN_OBJECT_END_,      
+                                                binson::TYPE_ARRAY  => self::STATE_ERROR],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_IN_OBJECT_END_,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_ERROR,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_IN_OBJECT_END_,      
+                                                binson::TYPE_ARRAY  => self::STATE_ERROR],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_IN_OBJECT_END_,      
+                                                binson::TYPE_ARRAY  => self::STATE_ERROR]
+        ],                
+        binson::TYPE_ARRAY => [
+            self::STATE_UNDEFINED       =>  self::STATE_AT_ARRAY_,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_ARRAY_,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_ARRAY_,
+                                             binson::TYPE_ARRAY  => self::STATE_AT_ARRAY_],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_ARRAY_,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,
+                                             binson::TYPE_ARRAY  => self::STATE_AT_ARRAY_],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_ARRAY_]      
+        ],
+        binson::TYPE_ARRAY_END => [
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_IN_ARRAY_END_],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_IN_ARRAY_END_,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_IN_ARRAY_END_],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_IN_ARRAY_END_]
+        ],
+        binson::TYPE_BOOLEAN => [// same as bool, int, double, bytes
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
+        ],
+        binson::TYPE_INTEGER => [// same as bool, int, double, bytes
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
+        ],                            
+        binson::TYPE_DOUBLE => [// same as bool, int, double, bytes
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
+        ],
+        binson::TYPE_STRING => [
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_AT_ITEM_KEY,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
+        ],
+        binson::TYPE_BYTES => [ // same as bool, int, double, bytes
+            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
+            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
+            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
+            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
+            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
+                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
+        ]
+   ];
+
+    public $config; 
+    public $depth; 
+
+    private $data;
+    private $logger;
+
+    protected $state;  // state stack;
+
+    public function reset()
+    {
+        $this->depth = 0;
+        unset($this->state);
+        $this->state = new BinsonStateStack($this);
+        $this->state[] = ['id' => self::STATE_UNDEFINED, 'block_type' => binson::TYPE_NONE];
+    }    
+
+    public function getName() : string
+    {
+        return $this->state['name'];
+    }
+
+    public function getType()
+    {
+        return $this->state['type'];
+    }
+
+    public function getBlockType() : int
+    {
+        return $this->state['block_type'];
+    }
+
+    public function getValue(int $ensure_type = binson::TYPE_NONE)
+    {
+        $state = $this->state['top'];
+        if ($ensure_type != binson::TYPE_NONE && $ensure_type != $state['type']) 
+            throw new BinsonException(binson::ERROR_WRONG_TYPE);
+
+        return $state['val'];
+    }    
+
+    protected function requestStateTransition(callable $data_input_cb) : array
+    {
+        //$pad = "d:{$this->depth} ".str_repeat(" ", $this->depth * 5);   /* DBG */
+
+        $state = $this->state['top'];
+        $state_update = [];
+
+        if ($state['id'] & self::STATE_MASK_NEED_INPUT)
+        {   
+            //echo $pad."current state: ".self::DBG_INT_TO_STATE_MAP[$state['id']]." - NEED_INPUT".PHP_EOL;
+            $state_update = $data_input_cb();
+            //echo $pad."processOne() -> type: ".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']].PHP_EOL;
+
+            $new_state_id = self::STATE_NO_RULE;
+            if (isset(self::NEW_TYPE_TO_STATE_MX[$state_update['type']]
+                        [$state['id']]
+                        [$this->getBlockType()]))
+                
+                $new_state_id =  self::NEW_TYPE_TO_STATE_MX[$state_update['type']]
+                                                           [$state['id']]
+                                                           [$this->getBlockType()];
+
+            //echo $pad."try NEW_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']]."][".
+            //        self::DBG_INT_TO_STATE_MAP[$state['id']]."][".
+            //        binson::DBG_INT_TO_TYPE_MAP[$this->getBlockType()]." -> ".
+            //        self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
+
+            if ($new_state_id === self::STATE_NO_RULE)
+            {
+                if (isset(self::NEW_TYPE_TO_STATE_MX[$state_update['type']][$state['id']]))
+                    $new_state_id = self::NEW_TYPE_TO_STATE_MX[$state_update['type']][$state['id']];
+
+            //    echo $pad."try NEW_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']].
+            //                        "][".self::DBG_INT_TO_STATE_MAP[$state['id']]
+            //                        ."] -> ".self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
+            }
+            $state_update['id'] = $new_state_id;
+        }
+        else
+        {
+            if (isset(self::BLOCK_TYPE_TO_STATE_MX[$this->getBlockType()][$state['id']]))
+            {
+                $new_state_id = self::BLOCK_TYPE_TO_STATE_MX[$this->getBlockType()][$state['id']];
+            //    echo $pad."try BLOCK_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$this->getBlockType()]
+            //                ."][".self::DBG_INT_TO_STATE_MAP[$state['id']]
+            //                ."] -> ".self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
+            }
+            $state_update['id'] = $new_state_id;
+        }
+
+        //if ($state_update['id'] & self::STATE_AT_ITEM_KEY)
+        //    $state_update['name'] = $state_update['val'];
+
+        //if ($state_update['id'] & self::STATE_AT_VALUE)
+        //    $state_update[''] = $state_update['val'];
+    
+
+        //echo $pad."requestStateTransition() -> ".json_encode($state_update).PHP_EOL;
+        //echo $pad."-------------------------------".PHP_EOL;
+
+        return $state_update;
+    }
+
+}
+
+class BinsonWriter extends BinsonProcessor
+{
+    private $data_len;
+	
+
     public function __construct(string &$dst = null)
     {
         $this->config = binson::CFG_DEFAULT;
@@ -201,29 +526,43 @@ class BinsonWriter
             $this->data = '';
 
         $this->data_len = strlen($this->data);
+
+        parent::reset();
     }
 
-    public function objectBegin() : BinsonWriter
+
+   public function objectBegin() : BinsonWriter
     {
-    	$this->writeToken(binson::TYPE_OBJECT, binson::DEF_OBJECT_BEGIN);
-    	return $this;
+        $this->writeToken(binson::TYPE_OBJECT, binson::DEF_OBJECT_BEGIN);
+
+        $this->depth++;
+        $this->state['block_type'] = binson::TYPE_OBJECT;
+        $this->state['name'] = null;
+        return $this;
     }
 
     public function objectEnd() : BinsonWriter
     {
-    	$this->writeToken(binson::TYPE_OBJECT_END, binson::DEF_OBJECT_END);
-    	return $this;
+        $this->writeToken(binson::TYPE_OBJECT_END, binson::DEF_OBJECT_END);
+
+        $this->depth--;
+        return $this;
     }
 
     public function arrayBegin() : BinsonWriter
     {
-    	$this->writeToken(binson::TYPE_ARRAY, binson::DEF_ARRAY_BEGIN);
+        $this->writeToken(binson::TYPE_ARRAY, binson::DEF_ARRAY_BEGIN);
+        
+        $this->depth++;
+        $this->state['block_type'] = binson::TYPE_ARRAY;
     	return $this;
     }
 
     public function arrayEnd() : BinsonWriter
     {
-    	$this->writeToken(binson::TYPE_ARRAY_END, binson::DEF_ARRAY_END);
+        $this->writeToken(binson::TYPE_ARRAY_END, binson::DEF_ARRAY_END);
+        
+        $this->depth--;        
     	return $this;
     }
 
@@ -263,7 +602,11 @@ class BinsonWriter
 
     public function putName(string $val) : BinsonWriter
     {
-    	return $this->putString($val);
+        //return $this->putString($val);
+        $this->writeToken(binson::TYPE_STRING, $val);
+
+        $this->state['name'] = $val;
+        return $this;
     }
 
     public function putBytes(string $val) : BinsonWriter
@@ -473,12 +816,12 @@ class BinsonWriter
     }
 }
 
-class BinsonParserStateStack implements ArrayAccess
+class BinsonStateStack implements ArrayAccess
 {
     private $data = [];
     private $bp;
 
-    public function __construct(BinsonParser &$bp)
+    public function __construct(BinsonProcessor &$bp)
     {
         $this->bp = &$bp;
     }
@@ -518,244 +861,16 @@ class BinsonParserStateStack implements ArrayAccess
 }
 
 
-class BinsonParser
+class BinsonParser extends BinsonProcessor
 {
-    // for debugging only
-    private const DBG_INT_TO_STATE_MAP = [
-        0x0001 => 'STATE_UNDEFINED',
-        0x0002 => 'STATE_AT_OBJECT_',
-        0x0004 => 'STATE_AT_ARRAY_',
-        0x0008 => 'STATE_AT_ITEM_KEY',
-        0x0010 => 'STATE_AT_VALUE',
-        0x0020 => 'STATE_IN_OBJECT_BEGIN',
-        0x0040 => 'STATE_IN_OBJECT_END_',
-        0x0080 => 'STATE_IN_ARRAY_BEGIN',
-        0x0100 => 'STATE_IN_ARRAY_END_',
-        0x0200 => 'STATE_OUTOF_OBJECT',
-        0x0400 => 'STATE_OUTOF_ARRAY',
-        0x0800 => 'STATE_DONE',
-        0x1000 => 'STATE_ERROR',
-        0x2000 => 'STATE_NO_RULE'
-    ];
-
-    // Suffix "_" means helper state: no new data required to make 
-    // transition from current state to next state
-    private const STATE_UNDEFINED       = 0x0001;  // before any parsing
-    private const STATE_AT_OBJECT_      = 0x0002;  // positioned at object start
-    private const STATE_AT_ARRAY_       = 0x0004;  // positioned at array start
-    private const STATE_AT_ITEM_KEY     = 0x0008;  // positioned at "name" of "name:value" pair
-    private const STATE_AT_VALUE        = 0x0010;  // positioned at primitive value of array or "name:value" pair
-    private const STATE_IN_OBJECT_BEGIN = 0x0020;  // just entered current object
-    private const STATE_IN_OBJECT_END_  = 0x0040;  // end of object detected    
-    private const STATE_IN_ARRAY_BEGIN  = 0x0080;  // just entered current array
-    private const STATE_IN_ARRAY_END_   = 0x0100;  // end of array detected
-    private const STATE_OUTOF_OBJECT    = 0x0200;  // just leaved object, but not moved further
-    private const STATE_OUTOF_ARRAY     = 0x0400;  // just leaved array, but not moved further
-
-    private const STATE_DONE            = 0x0800;
-    private const STATE_ERROR           = 0x1000;
-    private const STATE_NO_RULE         = 0x2000;  // missing state transition rule
-
-    private const STATE_MASK_BLOCK_BEGIN = self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN;
-
-    private const STATE_MASK_NEED_INPUT = self::STATE_UNDEFINED | 
-                                          self::STATE_AT_VALUE | self::STATE_AT_ITEM_KEY | 
-                                          self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN |
-                                          self::STATE_OUTOF_OBJECT | self:: STATE_OUTOF_ARRAY;
-    private const STATE_MASK_HELPER = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
-                                      self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
-
-    /* states are ok to stop on, when ADVANCE_NEXT is applied  */
-    private const STATE_MASK_NEXT = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
-                                    self::STATE_AT_VALUE  |
-                                    self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
-
-    // EndOfBlock                                        
-    private const STATE_MASK_EOB = self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
-
-    private const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR | self::STATE_NO_RULE;
-
-    const TYPE_MASK_VALUE     = binson::TYPE_BOOLEAN | binson::TYPE_INTEGER |
-                                binson::TYPE_DOUBLE | binson::TYPE_STRING | binson::TYPE_BYTES;
-    
-
-    const ADVANCE_ONE           = 0x01;  /* one step, traversal */
-    const ADVANCE_NEXT          = 0x02;  /* traversal until depth become same as initial */
-    const ADVANCE_LEAVE_BLOCK   = 0x04;  /* traversal until depth become less than initial */
-
-    /* Priority=2. Default state transition matrix */
-    private const BLOCK_TYPE_TO_STATE_MX = [
-        binson::TYPE_NONE => [ // top level
-            self::STATE_AT_OBJECT_      =>  self::STATE_IN_OBJECT_BEGIN,            
-            self::STATE_AT_ARRAY_       =>  self::STATE_IN_ARRAY_BEGIN,            
-            self::STATE_OUTOF_OBJECT    =>  self::STATE_DONE,
-            self::STATE_OUTOF_ARRAY     =>  self::STATE_DONE,          
-            self::STATE_DONE            =>  self::STATE_DONE,
-            self::STATE_ERROR           =>  self::STATE_ERROR
-        ],
-        binson::TYPE_OBJECT => [
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_OBJECT_       =>  self::STATE_IN_OBJECT_BEGIN,
-            self::STATE_AT_ARRAY_        =>  self::STATE_IN_ARRAY_BEGIN,
-            self::STATE_AT_ITEM_KEY      =>  self::STATE_AT_VALUE,
-            self::STATE_AT_VALUE         =>  self::STATE_AT_ITEM_KEY,
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_AT_ITEM_KEY,
-            self::STATE_IN_OBJECT_END_   =>  self::STATE_OUTOF_OBJECT,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_END_    =>  self::STATE_ERROR,
-            self::STATE_OUTOF_OBJECT    =>  self::STATE_AT_ITEM_KEY,
-            self::STATE_OUTOF_ARRAY     =>  self::STATE_AT_ITEM_KEY,          
-            self::STATE_DONE            =>  self::STATE_DONE,
-            self::STATE_ERROR           =>  self::STATE_ERROR
-        ],
-        binson::TYPE_ARRAY => [
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_OBJECT_       =>  self::STATE_IN_OBJECT_BEGIN,
-            self::STATE_AT_ARRAY_        =>  self::STATE_IN_ARRAY_BEGIN,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
-            self::STATE_AT_VALUE         =>  self::STATE_AT_VALUE,
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
-            self::STATE_IN_OBJECT_END_   =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
-            self::STATE_IN_ARRAY_END_    =>  self::STATE_OUTOF_ARRAY,
-            self::STATE_OUTOF_OBJECT    =>  self::STATE_AT_VALUE,
-            self::STATE_OUTOF_ARRAY     =>  self::STATE_AT_VALUE,          
-            self::STATE_DONE            =>  self::STATE_DONE,
-            self::STATE_ERROR           =>  self::STATE_ERROR            
-        ]
-    ];
-
-    /* Priority=1. Default state transition matrix: maps newly consumed chunk's type to new state */
-    private const NEW_TYPE_TO_STATE_MX = [   
-        binson::TYPE_OBJECT => [
-            self::STATE_UNDEFINED       =>  self::STATE_AT_OBJECT_,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_OBJECT_,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_OBJECT_,
-                                                binson::TYPE_ARRAY  => self::STATE_AT_OBJECT_],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_OBJECT_,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,
-                                                binson::TYPE_ARRAY  => self::STATE_AT_OBJECT_],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                                binson::TYPE_ARRAY  => self::STATE_AT_OBJECT_] 
-        ],                            
-        binson::TYPE_OBJECT_END => [
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_IN_OBJECT_END_,      
-                                                binson::TYPE_ARRAY  => self::STATE_ERROR],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_IN_OBJECT_END_,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_ERROR,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_IN_OBJECT_END_,      
-                                                binson::TYPE_ARRAY  => self::STATE_ERROR],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_IN_OBJECT_END_,      
-                                                binson::TYPE_ARRAY  => self::STATE_ERROR]
-        ],                
-        binson::TYPE_ARRAY => [
-            self::STATE_UNDEFINED       =>  self::STATE_AT_ARRAY_,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_ARRAY_,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_ARRAY_,
-                                             binson::TYPE_ARRAY  => self::STATE_AT_ARRAY_],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_ARRAY_,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,
-                                             binson::TYPE_ARRAY  => self::STATE_AT_ARRAY_],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_ARRAY_]      
-        ],
-        binson::TYPE_ARRAY_END => [
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_ERROR,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_IN_ARRAY_END_],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_IN_ARRAY_END_,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_IN_ARRAY_END_],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_IN_ARRAY_END_]
-        ],
-        binson::TYPE_BOOLEAN => [// same as bool, int, double, bytes
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
-        ],
-        binson::TYPE_INTEGER => [// same as bool, int, double, bytes
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
-        ],                            
-        binson::TYPE_DOUBLE => [// same as bool, int, double, bytes
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
-        ],
-        binson::TYPE_STRING => [
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_AT_ITEM_KEY,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_AT_ITEM_KEY,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
-        ],
-        binson::TYPE_BYTES => [ // same as bool, int, double, bytes
-            self::STATE_UNDEFINED       =>  self::STATE_ERROR,
-            self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_VALUE,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
-            self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_VALUE,
-            self::STATE_OUTOF_OBJECT    =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE],
-            self::STATE_OUTOF_ARRAY     =>  [binson::TYPE_OBJECT => self::STATE_ERROR,      
-                                             binson::TYPE_ARRAY  => self::STATE_AT_VALUE]            
-        ]
-   ];
-
-
-    /* public data members */
-    public $config;
-    public $depth;
-    //public $type;
-
     /* private data members */
-    private $data;
     private $idx;
-    private $state;
-
-    private $logger;
 
 
     public function __construct(string &$src)
     {
         $this->config = binson::CFG_DEFAULT;
         $this->logger = new BinsonLogger(BinsonLogger::DEBUG);
-        $this->state = new BinsonParserStateStack($this);
 
         $this->reset($src);
     }
@@ -766,10 +881,8 @@ class BinsonParser
             $this->data = &$src;    
         
         $this->idx = 0;
-        $this->depth = 0;
-        unset($this->state);
-        $this->state = new BinsonParserStateStack($this);
-        $this->state[] = ['id' => self::STATE_UNDEFINED, 'block_type' => binson::TYPE_NONE];
+        
+        parent::reset();
     }
 
     public function dump() : string
@@ -867,29 +980,7 @@ class BinsonParser
         return false;
     }
     
-    public function getName() : string
-    {
-        return $this->state['name'];
-    }
 
-    public function getType()
-    {
-        return $this->state['type'];
-    }
-
-    public function getBlockType() : int
-    {
-        return $this->state['block_type'];
-    }
-
-    public function getValue(int $ensure_type = binson::TYPE_NONE)
-    {
-        $state = $this->state['top'];
-        if ($ensure_type != binson::TYPE_NONE && $ensure_type != $state['type']) 
-            throw new BinsonException(binson::ERROR_WRONG_TYPE);
-
-        return $state['val'];
-    }
 
     public function getRaw() : string
     {  
@@ -919,68 +1010,6 @@ class BinsonParser
 
     /*======= Private method implementations ====================================*/
 
-    private function requestStateTransition() : array
-    {
-        //$pad = "d:{$this->depth} ".str_repeat(" ", $this->depth * 5);   /* DBG */
-
-        $state = $this->state['top'];
-        $state_update = [];
-
-        if ($state['id'] & self::STATE_MASK_NEED_INPUT)
-        {   
-            //echo $pad."current state: ".self::DBG_INT_TO_STATE_MAP[$state['id']]." - NEED_INPUT".PHP_EOL;
-            $state_update = $this->processOne();
-            //echo $pad."processOne() -> type: ".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']].PHP_EOL;
-
-            $new_state_id = self::STATE_NO_RULE;
-            if (isset(self::NEW_TYPE_TO_STATE_MX[$state_update['type']]
-                        [$state['id']]
-                        [$this->getBlockType()]))
-                
-                $new_state_id =  self::NEW_TYPE_TO_STATE_MX[$state_update['type']]
-                                                           [$state['id']]
-                                                           [$this->getBlockType()];
-
-            //echo $pad."try NEW_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']]."][".
-            //        self::DBG_INT_TO_STATE_MAP[$state['id']]."][".
-            //        binson::DBG_INT_TO_TYPE_MAP[$this->getBlockType()]." -> ".
-            //        self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
-
-            if ($new_state_id === self::STATE_NO_RULE)
-            {
-                if (isset(self::NEW_TYPE_TO_STATE_MX[$state_update['type']][$state['id']]))
-                    $new_state_id = self::NEW_TYPE_TO_STATE_MX[$state_update['type']][$state['id']];
-
-            //    echo $pad."try NEW_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$state_update['type']].
-            //                        "][".self::DBG_INT_TO_STATE_MAP[$state['id']]
-            //                        ."] -> ".self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
-            }
-            $state_update['id'] = $new_state_id;
-        }
-        else
-        {
-            if (isset(self::BLOCK_TYPE_TO_STATE_MX[$this->getBlockType()][$state['id']]))
-            {
-                $new_state_id = self::BLOCK_TYPE_TO_STATE_MX[$this->getBlockType()][$state['id']];
-            //    echo $pad."try BLOCK_TYPE_TO_STATE_MX[".binson::DBG_INT_TO_TYPE_MAP[$this->getBlockType()]
-            //                ."][".self::DBG_INT_TO_STATE_MAP[$state['id']]
-            //                ."] -> ".self::DBG_INT_TO_STATE_MAP[$new_state_id].PHP_EOL;
-            }
-            $state_update['id'] = $new_state_id;
-        }
-
-        //if ($state_update['id'] & self::STATE_AT_ITEM_KEY)
-        //    $state_update['name'] = $state_update['val'];
-
-        //if ($state_update['id'] & self::STATE_AT_VALUE)
-        //    $state_update[''] = $state_update['val'];
-    
-
-        //echo $pad."requestStateTransition() -> ".json_encode($state_update).PHP_EOL;
-        //echo $pad."-------------------------------".PHP_EOL;
-
-        return $state_update;
-    }
 
     private function callbackWrapper(?callable $cb, array $state_update, &$param = null) : bool
     {
@@ -1002,7 +1031,7 @@ class BinsonParser
             if ($this->state['id'] & self::STATE_MASK_EXIT)
                 return false;
             
-            $state_req = $this->requestStateTransition();
+            $state_req = $this->requestStateTransition([$this, 'processOne']);//$this->processOne());
             //$update_req = $state_req + array_intersect_key($this->state['top'], 
             //                                ['type'=>0, 'block_type'=>0]);
 
@@ -1115,7 +1144,7 @@ class BinsonParser
     }
 
     /* return associative array:  type, value */
-    private function processOne() : array
+    protected function processOne() : array
     {
         $byte = ord($this->consume(1));
 
