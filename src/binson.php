@@ -535,9 +535,9 @@ class BinsonWriter extends BinsonProcessor
     {
         $this->writeToken(binson::TYPE_OBJECT, binson::DEF_OBJECT_BEGIN);
 
-        $this->depth++;
-        $this->state['block_type'] = binson::TYPE_OBJECT;
-        $this->state['name'] = null;
+        //$this->depth++;
+        //$this->state['block_type'] = binson::TYPE_OBJECT;
+        //$this->state['name'] = null;
         return $this;
     }
 
@@ -545,7 +545,7 @@ class BinsonWriter extends BinsonProcessor
     {
         $this->writeToken(binson::TYPE_OBJECT_END, binson::DEF_OBJECT_END);
 
-        $this->depth--;
+        //$this->depth--;
         return $this;
     }
 
@@ -553,8 +553,8 @@ class BinsonWriter extends BinsonProcessor
     {
         $this->writeToken(binson::TYPE_ARRAY, binson::DEF_ARRAY_BEGIN);
         
-        $this->depth++;
-        $this->state['block_type'] = binson::TYPE_ARRAY;
+        //$this->depth++;
+        //$this->state['block_type'] = binson::TYPE_ARRAY;
     	return $this;
     }
 
@@ -562,7 +562,7 @@ class BinsonWriter extends BinsonProcessor
     {
         $this->writeToken(binson::TYPE_ARRAY_END, binson::DEF_ARRAY_END);
         
-        $this->depth--;        
+        //$this->depth--;        
     	return $this;
     }
 
@@ -605,7 +605,7 @@ class BinsonWriter extends BinsonProcessor
         //return $this->putString($val);
         $this->writeToken(binson::TYPE_STRING, $val);
 
-        $this->state['name'] = $val;
+        //$this->state['name'] = $val;
         return $this;
     }
 
@@ -692,12 +692,18 @@ class BinsonWriter extends BinsonProcessor
             case "double":   return $this->putDouble($var);
             case "boolean":  return $this->putBoolean($var);
 
+            case "object":
+                if ($var instanceof BinsonWriter)
+                    return $this->putInline($var);
+
+                /* fallthrough */
             default:
                 throw new BinsonException(binson::ERROR_WRONG_TYPE);                
         }
 
-        $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var),
-                                                    RecursiveIteratorIterator::SELF_FIRST);
+        $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($var, 
+                                                        RecursiveArrayIterator::CHILD_ARRAYS_ONLY),
+                                                            RecursiveIteratorIterator::SELF_FIRST);
         $last_depth = -1;
         $type_stack = [];
         $block_type = -1;
@@ -706,6 +712,9 @@ class BinsonWriter extends BinsonProcessor
             
             //if (is_array($value))
              //   uksort($value, "strcmp"); //// remove ????
+
+            //if (is_object($value))  // we don't want iterate over BinsonWriter properties
+            //    continue;
 
             $depth = $iterator->getDepth();   
             
@@ -785,7 +794,8 @@ class BinsonWriter extends BinsonProcessor
             if ( is_string($var) ||
                  is_int($var) ||
                  is_float($var) ||
-                 is_bool($var) )
+                 is_bool($var) || 
+                 $var instanceof BinsonWriter)
             return true;
 
             return false;

@@ -115,6 +115,21 @@ $writer->put(binson::EMPTY_OBJECT);    // {} - empty binson object
 $writer->put([binson::EMPTY_OBJECT]);  // [{}] - empty object inside the empty array
 ```
 &nbsp;  
+
+Include external writer:
+```PHP
+$writer_external->put(['a'=>'b']);
+...
+$writer->put(['ext'=>$writer_external]); 
+```
+
+Include raw bytes:
+```PHP
+$writer_external->putRaw("\x42\x44\x43");
+...
+$writer->put(['ext'=>$writer_external]); 
+```
+
 Low-level API:
 ```PHP
 $writer->objectBegin();
@@ -146,6 +161,26 @@ $writer->objectBegin()
             ->arrayEnd()
        ->objectEnd();
 ```
+
+Include external writer:
+```PHP
+ $writer_ext->arrayBegin()
+                ->putFalse()
+            ->arrayEnd();
+
+$writer->arrayBegin()
+            ->putInline($writer_ext)
+       ->arrayEnd();
+```
+
+Include raw bytes:
+```PHP
+
+$writer->arrayBegin()
+            ->putRaw("\x42\x45\x43")
+       ->arrayEnd();
+```
+
 
 BinsonParser class usage examples:
 -----------
