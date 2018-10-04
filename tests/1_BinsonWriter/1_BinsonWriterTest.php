@@ -185,6 +185,39 @@ class BinsonWriterTest extends TestCase
                           ."\xff\x7f\x43\x41", $writer->toBytes());
     }       
 
+
+    public function testRawArray() 
+    {
+        $buf = '';
+
+        $writer = new BinsonWriter($buf);
+
+        $writer->arrayBegin()
+                    ->putRaw("\x42\x45\x43")
+            ->arrayEnd();
+
+        $this->assertSame("\x42\x42\x45\x43\x43", $writer->toBytes());
+    }
+
+    public function testInlineArray() 
+    {
+        $buf = '';
+        $buf_inline = '';
+
+        $writer = new BinsonWriter($buf);
+        $writer_inline = new BinsonWriter($buf_inline);
+
+        $writer_inline->arrayBegin()
+                         ->putFalse()
+                      ->arrayEnd();
+
+        $writer->arrayBegin()
+                    ->putInline($writer_inline)
+               ->arrayEnd();
+
+        $this->assertSame("\x42\x42\x45\x43\x43", $writer->toBytes());
+    }
+
  /*  public function testVerifySuccess() 
     {
         $this->markTestSkipped('implement in parser first');
@@ -202,29 +235,8 @@ class BinsonWriterTest extends TestCase
         $writer = new BinsonWriter($buf);
         $this->assertSame(false, $writer->verify());
     }
-*/
+*/    
 
-/*    public function testInline() 
-    {
-        $buf = str_repeat('_', 128);
-        $buf_inline = str_repeat('_', 128);
-
-        $writer = new BinsonWriter($buf);
-        $writer_inline = new BinsonWriter($buf_inline);
-
-        $writer_inline->putBytes("a");
-
-        $this->assertSame(3, $writer_inline->length());
-        $this->assertSame("\x18\x01\x61", $writer_inline->toBytes());
-
-        $writer->arrayBegin()
-               ->putInline($writer_inline)
-               ->arrayEnd();
-
-        $this->assertSame(5, $writer->length());
-        $this->assertSame("\x42\x18\x01\x61\x43", $writer->toBytes());
-    }
-*/
 /*    public function testExceptions() 
     {
         $buf = str_repeat('_', 1);

@@ -615,11 +615,18 @@ class BinsonWriter extends BinsonProcessor
     	return $this;
     }
 
+    public function putRaw(string $bytes) : BinsonWriter
+    {
+    	$this->data .= $bytes;
+    	return $this;
+    }
+
     public function putInline(BinsonWriter $src_writer) : BinsonWriter
     {
     	$this->data .= $src_writer->data;
     	return $this;
     }
+
 
 	public function length() : int
     {
