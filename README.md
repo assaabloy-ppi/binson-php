@@ -78,10 +78,11 @@ make test.serializer
 make test.deserializer
 ```
 
-Native array serialization constraints:
+PHP native arrays serialization constraints:
 ---------------------------
 Not all arbitrary multilevel arrays are serializable. Next rules should be applied to make sure array is serializer-compatible:
-* For values only `bool`, `integer`, `float`, `string`, `array` typed members are allowed.
+* For values only primitive types `bool`, `integer`, `float`, `string`, `array` are allowed. 
+* When use instance of the class `BinsonWriter` as value, it's  content (bytes) will be placed inline, without any framing.
 * For field names only `string` is allowed. Numeric field names must have dot suffix. E.g. PHP array `['3.' => true]` will be translated to binson object `{'3' => true}`, then to raw byte sequence: `\x40\x14\x01\x33\x44\x41`.
 
 
@@ -91,7 +92,7 @@ BinsonWriter class usage examples:
 Typical usage (serialization):
 ```PHP
 $writer = new BinsonWriter();
-$writer->put( ["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7] );
+$writer->put( ["a"=>[true, 123, "b", 5, binson::BYTES("\x01\x02")], "b"=>false, "c"=>7] );
 ```
 &nbsp;  
 "Streaming" to existing string:
@@ -267,7 +268,16 @@ Source:  [wikipedia](https://en.wikipedia.org/wiki/Double-precision_floating-poi
 
 ## Changelog
 
-#### 2018-09-30
+#### 2018-10-06
 
+* Added ability to mark string values to be encoded into BYTES binson type instead of default STRING by wrapping strings with `binson::BYTES()`.
+
+
+#### 2018-10-04
+
+* Added functionality to place inline data from external writer in both log and high level API. See: `BinsonWriter::putRaw()` and `BinsonWriter::putInline()`.
+
+
+#### 2018-09-30
 
 * top-level functions `binson_encode()` and `binson_decode()` are implemented (as wrappers around `BinsonWriter` & `BinsonParser`)

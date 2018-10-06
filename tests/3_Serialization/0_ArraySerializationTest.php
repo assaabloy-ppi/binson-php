@@ -44,6 +44,24 @@ class ArraySerializationTest extends TestCase
         $this->assertSame("\x14\x01\x61", $writer->toBytes());
     }
 
+    public function testPrimitive_PHP_TypeStringCasted() 
+    {
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $writer->put(binson::STRING('a'));
+        $this->assertSame("\x14\x01\x61", $writer->toBytes());
+    }
+
+    public function testPrimitiveBytesCasted() 
+    {
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $writer->put(binson::BYTES('a'));
+        $this->assertSame("\x18\x01\x61", $writer->toBytes());
+    }
+
     public function testPrimitive_PHP_TypeStringThenInt() 
     {
         $buf = "";

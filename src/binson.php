@@ -81,10 +81,7 @@ abstract class binson {
         'max_field_count' => 1000,
         'max_depth' => 32,
         'parser_int_overflow_action' => 'exception',  // [exception|to_float]
-        
-        // check all string to be valid UTF8 during serialization, encode as BYTES if not. 
-        'serializer_bytes_fallback'  => true,
-        
+                
         // add single EMPTY_KEY => EMPTY_VAL item to empty OBJECT representation
         'deserializer_add_empty_sign' => true,
         
@@ -93,6 +90,32 @@ abstract class binson {
 
         'serializer_sort_fields'  => false,
     ];
+
+    // used to wrap strings to make it looking like BYTES for serializer
+    static function BYTES(string $s)
+    {
+        return (object)$s;
+    }
+
+    // do nothing, just to have couple: BYTES() & STRING()
+    static function STRING(string $s)
+    {
+        return $s;
+    }    
+
+    static function isBYTES($var) : bool
+    {
+        return (is_object($var) &&
+                $var instanceof stdClass &&
+                property_exists($var, 'scalar') &&
+                is_string($var->scalar))? true : false;
+    }    
+
+    static function isSTRING($var) : bool
+    {
+        return is_string($var)? true : false;
+    }    
+
 }
 
 
@@ -676,24 +699,21 @@ class BinsonWriter extends BinsonProcessor
         switch(gettype($var))
         {
             case "array":
-                $var = self::sortDeeply($var);
-
                 if (binson::EMPTY_ARRAY === $var)
                     return $this->arrayBegin()->arrayEnd();                     
-                break;        
 
-            case "string":
-            if ($this->config['serializer_bytes_fallback'] && !isUtf8($var))
-                return $this->putBytes($var);
-            else
-                return $this->putString($var);
+                $var = self::sortDeeply($var);
+                break;        
 
             case "integer":  return $this->putInteger($var);
             case "double":   return $this->putDouble($var);
             case "boolean":  return $this->putBoolean($var);
+            case "string":   return $this->putString($var);
 
             case "object":
-                if ($var instanceof BinsonWriter)
+                if (binson::isBYTES($var))
+                    return $this->putBytes($var->scalar);
+                elseif ($var instanceof BinsonWriter)
                     return $this->putInline($var);
 
                 /* fallthrough */
@@ -795,7 +815,8 @@ class BinsonWriter extends BinsonProcessor
                  is_int($var) ||
                  is_float($var) ||
                  is_bool($var) || 
-                 $var instanceof BinsonWriter)
+                 $var instanceof BinsonWriter || 
+                 $var instanceof stdClass)
             return true;
 
             return false;
