@@ -9,7 +9,7 @@ Just place `src/binson.php` into your project's source directory and "require" i
 You need nothing to know about binson to start using it:
 
 ```php
-$src = ["a"=>[true, 123, "b", 5], "b"=>false, "c"=>7];
+$src = ["a"=>[true, 123, "b", 5, binson::BYTES("\x01\x02")], "b"=>false, "c"=>7];
 
 $binson_raw = binson_encode($src);      // encode arbitrary associative array to binary string 
 $decoded = binson_decode($binson_raw);  // decode, if possible, from binson-encoded binary string
