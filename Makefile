@@ -1,6 +1,15 @@
 .DEFAULT_GOAL := help
 .PHONY: any
 
+ifeq ($(OS),Windows_NT)
+    OPEN := start
+else
+    UNAME := $(shell uname -s)
+    ifeq ($(UNAME),Linux)
+        OPEN := xdg-open
+    endif
+endif
+
 help: Makefile
 	@echo "\nUsage: make <target>"
 	@echo "\twhere <target> is one of the following:\n"
@@ -24,3 +33,8 @@ test.%: ## Run some tests, specified by group filter: [lowlevel|writer|parser|se
 
 test.overnight: ## Run some heavy fuzzy tests in continuous mode
 	php ./tests/5_Functional/FuzzyConsistancyTestStandalone.php
+
+coverage: ## Generate code coverage report and open browser for viewing it
+	vendor/bin/phpunit --coverage-html ./report/cov --whitelist \
+	./src/binson.php -v --bootstrap ./tests/bootstrap_native.phpb --testdox tests \
+	|| $(OPEN) report/cov/index.html

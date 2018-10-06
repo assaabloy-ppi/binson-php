@@ -3,6 +3,7 @@ vendor
 *.cache
 composer.lock
 .vscode
+report
 
 
 
