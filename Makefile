@@ -32,7 +32,7 @@ test.%: ## Run some tests, specified by group filter: [lowlevel|writer|parser|se
 	vendor/bin/phpunit -v --bootstrap ./tests/bootstrap_native.phpb --testdox tests --group $(*)
 
 test.overnight: ## Run some heavy fuzzy tests in continuous mode
-	php ./tests/5_Functional/FuzzyConsistancyTestStandalone.php
+	php ./tests/6_Functional/FuzzyConsistancyTestStandalone.php
 
 coverage: ## Generate code coverage report and open browser for viewing it
 	vendor/bin/phpunit --coverage-html ./report/cov --whitelist \

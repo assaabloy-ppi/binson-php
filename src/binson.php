@@ -181,7 +181,7 @@ class BinsonLogger {
 };
 
 // high level wrapper
-function binson_encode(array $src, array $cfg = null) : string
+function binson_encode(array $src, array $cfg = null) /*PHP7.1+ : string*/
 {
     $writer = new BinsonWriter();
 
@@ -193,7 +193,7 @@ function binson_encode(array $src, array $cfg = null) : string
 }
 
 // high level wrapper
-function binson_decode( string $raw, array $cfg = null ) : array
+function binson_decode( string $raw, array $cfg = null ) /*PHP7.1+ : array*/
 {
     $parser = new BinsonParser($raw);
 
