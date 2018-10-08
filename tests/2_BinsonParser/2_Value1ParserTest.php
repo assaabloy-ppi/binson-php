@@ -29,13 +29,29 @@ class Value1ParserTest extends TestCase
             $this->assertSame("\x00\x81\x00\xff\x00", $parser->getValue(binson::TYPE_BYTES));
         $parser->leaveArray();
             
-        $this->assertSame(true, $parser->isDone());
-        $this->assertSame(true, $parser->verify());
-
+            $this->assertSame(true, $parser->isDone());
+            $this->assertSame(true, $parser->verify());
     } 
 
+    public function testSimpleValuesNested()
+    {    
+        $buf = "\x42\x42\x45\x43\x44\x42\x43\x43";  // [[false]],true,[]]
+        $parser = new BinsonParser($buf);
+        
+            $this->assertSame(0, $parser->depth);
+        $parser->enterArray();
+        $parser->next();
+        $parser->next();
+            $this->assertSame(true, $parser->getValue(binson::TYPE_BOOLEAN));
+        $parser->next(); 
+        $parser->enterArray();
+            $this->assertSame(2, $parser->depth);
+        $parser->leaveArray();
+        $parser->leaveArray();            
+            $this->assertSame(true, $parser->isDone());
+            $this->assertSame(true, $parser->verify());
+    }
 }
 
-//    [[false]],true,[]
 
  

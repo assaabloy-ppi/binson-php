@@ -48,7 +48,7 @@ abstract class binson {
     const EMPTY_OBJECT         = [binson::EMPTY_KEY => binson::EMPTY_VAL];
 
     // for debugging only
-    public const DBG_INT_TO_TYPE_MAP = [
+    const DBG_INT_TO_TYPE_MAP = [
         0x0000 => 'TYPE_NONE',
         0x0001 => 'TYPE_OBJECT',
         0x0002 => 'TYPE_OBJECT_END',
@@ -181,7 +181,7 @@ class BinsonLogger {
 };
 
 // high level wrapper
-function binson_encode(array $src, array $cfg = null) : ?string
+function binson_encode(array $src, array $cfg = null) : string
 {
     $writer = new BinsonWriter();
 
@@ -193,7 +193,7 @@ function binson_encode(array $src, array $cfg = null) : ?string
 }
 
 // high level wrapper
-function binson_decode( string $raw, array $cfg = null ) : ?array
+function binson_decode( string $raw, array $cfg = null ) : array
 {
     $parser = new BinsonParser($raw);
 
@@ -761,7 +761,7 @@ class BinsonWriter extends BinsonProcessor
             if ($value !== null && $block_type === binson::TYPE_OBJECT)
             {   
                 // numeric fields support workaround
-                if (strlen($key) > 1 && $key[-1] === '.') 
+                if (strlen($key) > 1 && $key[strlen($key)-1] === '.') 
                 {
                     $key2 = substr($key, 0, -1);
                     if ((string) (int) $key2 === $key2) // valid integer representation
@@ -826,7 +826,7 @@ class BinsonWriter extends BinsonProcessor
     /*======= Private method implementations ====================================*/
 
 
-    private function writeToken(int $token_type, $val = null) : void
+    private function writeToken(int $token_type, $val = null) //[PHP7.1+] : void
     {
         switch ($token_type) {
                 case binson::TYPE_OBJECT:
@@ -1049,7 +1049,7 @@ class BinsonParser extends BinsonProcessor
     /*======= Private method implementations ====================================*/
 
 
-    private function callbackWrapper(?callable $cb, array $state_update, &$param = null) : bool
+    private function callbackWrapper(/*PHP7.1+ callable*/ $cb, array $state_update, &$param = null) : bool
     {
         $prev_state = $this->state['top'];
         $this->state[] = $state_update; // copy id, type, value
@@ -1060,8 +1060,8 @@ class BinsonParser extends BinsonProcessor
         return $cb? $cb($prev_state, $param) : false;        
     }
 
-    private function advance(int $scan_mode, ?string $scan_name = null, int $ensure_type = null,
-                             ?callable $cb = null, &$cb_param = null) : bool
+    private function advance(int $scan_mode, string $scan_name = null, int $ensure_type = null,
+                             callable $cb = null, &$cb_param = null) : bool
     {
         $orig_depth = $this->depth;
 
@@ -1238,7 +1238,7 @@ class BinsonParser extends BinsonProcessor
        // field order validation!
     }
 
-    private function cbDeserializer(?array $prev_state, &$param = null) : bool
+    private function cbDeserializer(array $prev_state, &$param = null) : bool
     {
         if (!is_array($param))
             throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbDeserializer() require `array` parameter");
@@ -1321,7 +1321,7 @@ class BinsonParser extends BinsonProcessor
         return true;        
     }
 
-    private function cbToString(?array $prev_state, &$param = null) : bool
+    private function cbToString(array $prev_state, &$param = null) : bool
     {        
         static $local_comma = false;
 
@@ -1459,7 +1459,7 @@ class BinsonParser extends BinsonProcessor
     private function parseNumeric(string $chunk, bool $is_float = false)
     {
         $len = strlen($chunk);
-        $filler = chr(ord($chunk[-1]) & 0x80 ? 0xff : 0x00);
+        $filler = chr(ord($chunk[/*PHP7.1+ -1*/ strlen($chunk)-1]) & 0x80 ? 0xff : 0x00);
         $chunk = str_pad($chunk, 8, $filler);
 
         if ($len == 8 && !$is_float && PHP_INT_SIZE < 8)

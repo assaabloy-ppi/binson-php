@@ -29,7 +29,9 @@ if (null !== binson_decode($raw))
 Compatibility
 --------------
 Known to be stable on following platforms:
+* PHP 7.0.32 (Ubuntu 14.04.5 LTS, x86_64)
 * PHP 7.1.20 (Ubuntu 14.04.5 LTS, x86_64 and i686)
+* PHP 7.2.8 (Ubuntu 14.04.5 LTS, x86_64)
 
 Note: no PHP5 compatibility (by design)
 
@@ -267,6 +269,11 @@ Source:  [wikipedia](https://en.wikipedia.org/wiki/Double-precision_floating-poi
 
 
 ## Changelog
+
+#### 2018-10-08
+
+* Library fixed to be backward compatible with PHP 7.0.x
+
 
 #### 2018-10-06
 

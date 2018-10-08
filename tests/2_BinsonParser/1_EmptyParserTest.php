@@ -265,33 +265,31 @@ class SimpleParserTest extends TestCase
 
             $this->assertSame(true, $parser->verify());        
     }    
-    
 
-  // {"A":{"A":{"A":{"A":{"A":{}}}}}, "B":1} 
-/*  uint8_t buffer[] = {
-    0x40,
-    0x14, 0x01, 0x41,
-        0x40,
-            0x14, 0x01, 0x41,
-                0x40,
-                    0x14, 0x01, 0x41,
-                        0x40,
-                            0x14, 0x01, 0x41,
-                                0x40,
-                                    0x14, 0x01, 0x41,
-                                    0x14, 0x01, 0x41,
-                                0x41,
-                        0x41,
-                0x41,
-        0x41,
-    0x14, 0x01, 0x42, 0x10, 0x01,
-    0x41
-};
-ASSERT_TRUE(binson_parser_init(&p, buffer, sizeof(buffer)));
-ASSERT_TRUE(binson_parser_verify(&p));
-ASSERT_TRUE(binson_parser_go_into_object(&p));
-ASSERT_TRUE(binson_parser_field_ensure(&p, "B", BINSON_TYPE_INTEGER));
-*/
+
+    public function testFieldAfterDeepNestedObject()
+    { 
+        // {"A":{"A":{"A":{"A":{"A":{}}}}}, "B":1} 
+        $buf = "\x40\x14\x01\x41\x40\x14\x01\x41\x40\x14\x01\x41\x40\x14\x01\x41".
+                "\x40\x14\x01\x41\x14\x01\x41\x41\x41\x41\x41\x14\x01\x42\x10\x01\x41";
+
+        $parser = new BinsonParser($buf);
+
+            $this->assertSame(0, $parser->depth);
+        $parser->enterObject();
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame(binson::TYPE_OBJECT, $parser->getType());
+        $parser->field("A");
+            $this->assertSame("A", $parser->getName());
+            $this->assertSame(1, $parser->depth);
+        $parser->field("B");
+            $this->assertSame("B", $parser->getName());
+            $this->assertSame(1, $parser->depth);
+            $this->assertSame(1, $parser->getValue(binson::TYPE_INTEGER));
+        $parser->leaveArray();
+            $this->assertSame(0, $parser->depth);
+            $this->assertSame(true, $parser->isDone());
+
+            $this->assertSame(true, $parser->verify());        
+    }
 }
-
-?>
