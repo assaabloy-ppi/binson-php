@@ -34,6 +34,13 @@ test.%: ## Run some tests, specified by group filter: [lowlevel|writer|parser|se
 test.overnight: ## Run some heavy fuzzy tests in continuous mode
 	php ./tests/6_Functional/FuzzyConsistancyTestStandalone.php
 
+test.c: ## Run verification tests against test data located in 'binson-c-light' repository
+	mkdir -p temp && cd temp && \
+	(git -C binson-c-light pull || git clone https://github.com/assaabloy-ppi/binson-c-light.git) && \
+	php ../tests/6_Functional/VerifyTestVectorDir.php ./binson-c-light/utest/test_data valid  && \
+	php ../tests/6_Functional/VerifyTestVectorDir.php ./binson-c-light/utest/test_data invalid
+
+
 coverage: ## Generate code coverage report and open browser for viewing it
 	vendor/bin/phpunit --coverage-html ./report/cov --whitelist \
 	./src/binson.php -v --bootstrap ./tests/bootstrap_native.phpb --testdox tests \
