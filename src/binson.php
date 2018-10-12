@@ -943,7 +943,7 @@ class BinsonParser extends BinsonProcessor
             if ($res)
                 $res = $this->advance(self::ADVANCE_LEAVE_BLOCK);
         }
-        catch (Error $err)
+        catch (Throwable $err)
         {
             // write to log
             $is_valid = false;
@@ -1462,7 +1462,7 @@ class BinsonParser extends BinsonProcessor
         $filler = chr(ord($chunk[/*PHP7.1+ -1*/ strlen($chunk)-1]) & 0x80 ? 0xff : 0x00);
         $chunk = str_pad($chunk, 8, $filler);
 
-        if ($len == 8 && !$is_float && PHP_INT_SIZE < 8)
+        if ($len === 8 && !$is_float && PHP_INT_SIZE < 8)
         {   
             if ($this->config['parser_int_overflow_action'] !== 'to_float')
             {
@@ -1493,13 +1493,13 @@ class BinsonParser extends BinsonProcessor
                 throw new BinsonException(binson::ERROR_FORMAT);
         }
 
-        if ($len == 1 && ($v >= binson::INT8_MIN && $v <= binson::INT8_MAX))
+        if ($len === 1 && ($v >= binson::INT8_MIN && $v <= binson::INT8_MAX))
             return $v;
-        else if ($len == 2 && ($v < binson::INT8_MIN || $v > binson::INT8_MAX))
+        else if ($len === 2 && ($v < binson::INT8_MIN || $v > binson::INT8_MAX))
             return $v;
-        else if ($len == 4 && ($v < binson::INT16_MIN || $v > binson::INT16_MAX))
+        else if ($len === 4 && ($v < binson::INT16_MIN || $v > binson::INT16_MAX))
             return $v;
-        else if ($len == 8 && ($v < binson::INT32_MIN || $v > binson::INT32_MAX))
+        else if ($len === 8 && ($v < binson::INT32_MIN || $v > binson::INT32_MAX))
             return $v;
 
         throw new BinsonException(binson::ERROR_FORMAT);
