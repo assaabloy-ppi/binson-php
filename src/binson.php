@@ -47,20 +47,6 @@ abstract class binson {
     const EMPTY_ARRAY          = []; 
     const EMPTY_OBJECT         = [binson::EMPTY_KEY => binson::EMPTY_VAL];
 
-    // for debugging only
-    const DBG_INT_TO_TYPE_MAP = [
-        0x0000 => 'TYPE_NONE',
-        0x0001 => 'TYPE_OBJECT',
-        0x0002 => 'TYPE_OBJECT_END',
-        0x0004 => 'TYPE_ARRAY',
-        0x0008 => 'TYPE_ARRAY_END',
-        0x0010 => 'TYPE_BOOLEAN',
-        0x0020 => 'TYPE_INTEGER',
-        0x0040 => 'TYPE_DOUBLE',
-        0x0080 => 'TYPE_STRING',        
-        0x0100 => 'TYPE_BYTES'
-    ];
-
     const ERROR_NONE           = 0;
     const ERROR_RANGE          = 1;
     const ERROR_FORMAT         = 2;
@@ -115,7 +101,6 @@ abstract class binson {
     {
         return is_string($var)? true : false;
     }    
-
 }
 
 
@@ -188,8 +173,16 @@ function binson_encode(array $src, array $cfg = null) : ?string
     if (is_array($cfg))
         $writer->config = $cfg;
 
-    $writer->put($src);        
-    return $writer->toBytes();
+    try
+    {        
+        $writer->put($src);        
+        return $writer->toBytes();
+    }
+    catch (Throwable $t)
+    {
+        // add here some error reporting to user (e.g with binson_get_last_error() ? )
+        return null;
+    }    
 }
 
 // high level wrapper
@@ -213,24 +206,6 @@ function binson_decode( string $raw, array $cfg = null ) : ?array
 
 class BinsonProcessor
 {
-    // for debugging only
-    const DBG_INT_TO_STATE_MAP = [
-        0x0001 => 'STATE_UNDEFINED',
-        0x0002 => 'STATE_AT_OBJECT_',
-        0x0004 => 'STATE_AT_ARRAY_',
-        0x0008 => 'STATE_AT_ITEM_KEY',
-        0x0010 => 'STATE_AT_VALUE',
-        0x0020 => 'STATE_IN_OBJECT_BEGIN',
-        0x0040 => 'STATE_IN_OBJECT_END_',
-        0x0080 => 'STATE_IN_ARRAY_BEGIN',
-        0x0100 => 'STATE_IN_ARRAY_END_',
-        0x0200 => 'STATE_OUTOF_OBJECT',
-        0x0400 => 'STATE_OUTOF_ARRAY',
-        0x0800 => 'STATE_DONE',
-        0x1000 => 'STATE_ERROR',
-        0x2000 => 'STATE_NO_RULE'
-    ];
-
     // Suffix "_" means helper state: no new data required to make 
     // transition from current state to next state
      const STATE_UNDEFINED       = 0x0001;  // before any parsing
@@ -553,39 +528,27 @@ class BinsonWriter extends BinsonProcessor
         parent::reset();
     }
 
-
    public function objectBegin() : BinsonWriter
     {
         $this->writeToken(binson::TYPE_OBJECT, binson::DEF_OBJECT_BEGIN);
-
-        //$this->depth++;
-        //$this->state['block_type'] = binson::TYPE_OBJECT;
-        //$this->state['name'] = null;
         return $this;
     }
 
     public function objectEnd() : BinsonWriter
     {
         $this->writeToken(binson::TYPE_OBJECT_END, binson::DEF_OBJECT_END);
-
-        //$this->depth--;
         return $this;
     }
 
     public function arrayBegin() : BinsonWriter
     {
         $this->writeToken(binson::TYPE_ARRAY, binson::DEF_ARRAY_BEGIN);
-        
-        //$this->depth++;
-        //$this->state['block_type'] = binson::TYPE_ARRAY;
     	return $this;
     }
 
     public function arrayEnd() : BinsonWriter
     {
         $this->writeToken(binson::TYPE_ARRAY_END, binson::DEF_ARRAY_END);
-        
-        //$this->depth--;        
     	return $this;
     }
 
@@ -625,10 +588,7 @@ class BinsonWriter extends BinsonProcessor
 
     public function putName(string $val) : BinsonWriter
     {
-        //return $this->putString($val);
         $this->writeToken(binson::TYPE_STRING, $val);
-
-        //$this->state['name'] = $val;
         return $this;
     }
 
@@ -649,7 +609,6 @@ class BinsonWriter extends BinsonProcessor
     	$this->data .= $src_writer->data;
     	return $this;
     }
-
 
 	public function length() : int
     {
@@ -730,12 +689,6 @@ class BinsonWriter extends BinsonProcessor
 
         foreach($iterator as $key => $value) {
             
-            //if (is_array($value))
-             //   uksort($value, "strcmp"); //// remove ????
-
-            //if (is_object($value))  // we don't want iterate over BinsonWriter properties
-            //    continue;
-
             $depth = $iterator->getDepth();   
             
             while ($depth < $last_depth)
@@ -822,9 +775,7 @@ class BinsonWriter extends BinsonProcessor
             return false;
     }
 
-
     /*======= Private method implementations ====================================*/
-
 
     private function writeToken(int $token_type, $val = null) : void
     {
@@ -1018,13 +969,6 @@ class BinsonParser extends BinsonProcessor
         return false;
     }
     
-
-
-    public function getRaw() : string
-    {  
-        // later
-    }
-
     public function toString() : string
     {
         $str = '';
@@ -1048,14 +992,10 @@ class BinsonParser extends BinsonProcessor
 
     /*======= Private method implementations ====================================*/
 
-
     private function callbackWrapper(?callable $cb, array $state_update, &$param = null) : bool
     {
         $prev_state = $this->state['top'];
         $this->state[] = $state_update; // copy id, type, value
-
-        //if (isset($this->state['top']['name']))
-        //echo 'name'.$this->state['top']['name'].PHP_EOL;
 
         return $cb? $cb($prev_state, $param) : false;        
     }
@@ -1070,17 +1010,7 @@ class BinsonParser extends BinsonProcessor
                 return false;
             
             $state_req = $this->requestStateTransition([$this, 'processOne']);//$this->processOne());
-            //$update_req = $state_req + array_intersect_key($this->state['top'], 
-            //                                ['type'=>0, 'block_type'=>0]);
-
-            $update_req = array_replace($this->state['top'], $state_req); //?? improve this
-            
-            // quick fix - remove val & name keys from request when dive into new block
-            //if ($update_req['id'] & self::STATE_IN_ARRAY_BEGIN)
-            //{            
-            //    unset($update_req['name']);
-           // }
-
+            $update_req = array_replace($this->state['top'], $state_req); //?? improve this                    
 
             $cb_called = false;
 
@@ -1111,8 +1041,6 @@ class BinsonParser extends BinsonProcessor
                 case self::STATE_IN_ARRAY_BEGIN:                
                 case self::STATE_IN_OBJECT_BEGIN:
                     $this->depth++;
-                    //unset($update_req['name']);         
-                    //unset($this->state['name']);
                     $this->state['block_type'] = $update_req['block_type'] = $update_req['type'];
                     break;
                     
@@ -1199,17 +1127,20 @@ class BinsonParser extends BinsonProcessor
 
             case binson::DEF_FALSE:
             case binson::DEF_TRUE:
-                return ['type' => binson::TYPE_BOOLEAN, 'val' => ($byte === binson::DEF_TRUE)];
+                return ['type' => binson::TYPE_BOOLEAN, 
+                        'val' => ($byte === binson::DEF_TRUE)];
 
             case binson::DEF_DOUBLE:                 
-                return ['type' => binson::TYPE_DOUBLE, 'val' => $this->parseNumeric($this->consume(8), true)];
+                return ['type' => binson::TYPE_DOUBLE, 
+                        'val' => $this->parseNumeric($this->consume(8), true)];
 
             case binson::DEF_INT8:
             case binson::DEF_INT16:
             case binson::DEF_INT32:
             case binson::DEF_INT64:                             
                 $size = 1 << ($byte - 16);
-                return ['type' => binson::TYPE_INTEGER, 'val' => $this->parseNumeric($this->consume($size))];
+                return ['type' => binson::TYPE_INTEGER, 
+                        'val' => $this->parseNumeric($this->consume($size))];
 
             /* string and field names processing */
             case binson::DEF_STRLEN_INT8:
@@ -1289,8 +1220,6 @@ class BinsonParser extends BinsonProcessor
                 return true;
 
             case self::STATE_AT_ITEM_KEY:
-                //$param .= '"'.$new_state['val'].'":';
-                //if ($param['current'])   ffffffffffff
                 return true;
             case self::STATE_AT_VALUE:
             {                
@@ -1342,35 +1271,29 @@ class BinsonParser extends BinsonProcessor
 
             case self::STATE_IN_ARRAY_BEGIN:                
                 $local_comma = false;
-                //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 $param .= '[';
                 return true;
             case self::STATE_IN_OBJECT_BEGIN:
                 $local_comma = false;
-                //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 $param .= '{';
                 return true;
             case self::STATE_OUTOF_ARRAY:
                 $param .= ']';
                 $local_comma = true;
-                //$param .= ($_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 return true;
             case self::STATE_OUTOF_OBJECT:
                 $param .= '}';
                 $local_comma = true;
-                //$param .= ($parent_state['id'] & self::STATE_MASK_INNER)? ',' : '';
                 return true;
             case self::STATE_AT_ITEM_KEY:
                 $param .= '"'.$new_state['val'].'":';
                 return true;
             case self::STATE_AT_VALUE:
-            //case self::STATE_IN_ARRAY:
             {
                 // totally ignore "unsupported" end types here            
                 if (!($new_state['type'] & self::TYPE_MASK_VALUE))
                     return true;
 
-                //$param .= ($prev_state['id'] & self::STATE_MASK_INNER) ? ',' : '';
                 $param .= $local_comma? ',' : '';
                 $local_comma = true;
 
@@ -1400,15 +1323,6 @@ class BinsonParser extends BinsonProcessor
             default:
                 throw new BinsonException(binson::ERROR_STATE, "unsupported state");
         }
-        return true;
-    }
-
-    private function cbDebug1(array $prev_state, &$param = null) : bool
-    {
-        //$new_state = $this->state['top'];
-        //$d = $this->depth;
-        //$idx = $this->idx;
-        //echo "idx:$idx\t, d:$d, ".json_encode($new_state).PHP_EOL;
         return true;
     }
 
@@ -1465,11 +1379,8 @@ class BinsonParser extends BinsonProcessor
         if ($len === 8 && !$is_float && PHP_INT_SIZE < 8)
         {   
             if ($this->config['parser_int_overflow_action'] !== 'to_float')
-            {
-                //var_dump($this->config['parser_int_overflow_action']);                
                 throw new BinsonException(binson::ERROR_INT_OVERFLOW);
-            }
-                
+
             // int64 parsing workarount on php32
             $val = unpack('vllword/vlhword/Vhdword', $chunk);
             $hdword_signed = unpack('l', pack('L', $val['hdword'])); // cast unsigned to signed
@@ -1478,7 +1389,6 @@ class BinsonParser extends BinsonProcessor
                         $val['lhword'] * 65536.0 + 
                         $hdword_signed[1] * 4294967296.0;
 
-            //echo $combined.PHP_EOL;  
             return $combined;
         }
 
@@ -1577,22 +1487,5 @@ function fixNumField(string $name) : string
 {
     return ((string) (int) $name === $name)? $name.'.' : $name;
 }
-
-function isUtf8($string) {
-    if (function_exists("mb_check_encoding") && is_callable("mb_check_encoding")) {
-        return mb_check_encoding($string, 'UTF8');
-    }
-
-    return preg_match('%^(?:
-          [\x09\x0A\x0D\x20-\x7E]            # ASCII
-        | [\xC2-\xDF][\x80-\xBF]             # non-overlong 2-byte
-        |  \xE0[\xA0-\xBF][\x80-\xBF]        # excluding overlongs
-        | [\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}  # straight 3-byte
-        |  \xED[\x80-\x9F][\x80-\xBF]        # excluding surrogates
-        |  \xF0[\x90-\xBF][\x80-\xBF]{2}     # planes 1-3
-        | [\xF1-\xF3][\x80-\xBF]{3}          # planes 4-15
-        |  \xF4[\x80-\x8F][\x80-\xBF]{2}     # plane 16
-    )*$%xs', $string);
-} 
 
 ?>
