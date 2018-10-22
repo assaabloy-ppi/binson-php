@@ -54,6 +54,19 @@ class InvalidDataTest extends TestCase
     {        
         $raw = "\x40\x14\x01\x41\x42\x43\x40\x41\x41"; // {'A'=>[], {}}
         $this->assertSame(false, binson_verify($raw));
-    }           
+    }          
+
+    public function testKeyWrongOrderWithEmptyKey()
+    {        
+        $raw = "\x40\x14\x01\x41\x14\x00\x14\x00\x42\x43\x41"; // {'A'=>'', ''=>[]}
+        $this->assertSame(false, binson_verify($raw));
+    }          
+
+    public function testKeyWrongOrderWithNumericKey()
+    {        
+        $raw = "\x40\x14\x01\x41\x42\x43\x14\x01\x37\x42\x43\x41" ; // {'A'=>[], '7'=>[]}
+        $this->assertSame(false, binson_verify($raw));
+    }          
+
 }
 

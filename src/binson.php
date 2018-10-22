@@ -902,17 +902,18 @@ class BinsonParser extends BinsonProcessor
     public function verify() : bool
     {
         $is_valid = true;
+        $ctx = []; // context for verification callback `cbVerify`
 
         $saved_depth = $this->depth;
         $saved_idx = $this->idx;
         $saved_state = $this->state;
-
-        // add validation function
+        
         try {
             $this->reset();
-            $res = $this->advance(self::ADVANCE_ONE, null, binson::TYPE_OBJECT | binson::TYPE_ARRAY);
+            $res = $this->advance(self::ADVANCE_ONE, null,
+                                  binson::TYPE_OBJECT | binson::TYPE_ARRAY, [$this, 'cbVerify'], $ctx);
             if ($res)
-                $res = $this->advance(self::ADVANCE_LEAVE_BLOCK);
+                $res = $this->advance(self::ADVANCE_LEAVE_BLOCK, null, 0, [$this, 'cbVerify'], $ctx);
         }
         catch (Throwable $err)
         {
@@ -978,7 +979,7 @@ class BinsonParser extends BinsonProcessor
         if (is_null($name))
             throw new BinsonException(binson::ERROR_NULL);
 
-        while ($this->advance(self::ADVANCE_NEXT, $name))  //??  why pass name to advance?
+        while ($this->advance(self::ADVANCE_NEXT))
         {
             $r = $name <=>  $this->state['name'];
             if (0 === $r)
@@ -1018,7 +1019,7 @@ class BinsonParser extends BinsonProcessor
         $prev_state = $this->state['top'];
         $this->state[] = $state_update; // copy id, type, value
 
-        return $cb? $cb($prev_state, $param) : false;        
+        return $cb? $cb($prev_state, $param) : true;        
     }
 
     private function advance(int $scan_mode, ?string $scan_name = null, int $ensure_type = null,
@@ -1067,7 +1068,10 @@ class BinsonParser extends BinsonProcessor
                     
                 case self::STATE_OUTOF_OBJECT:
                 case self::STATE_OUTOF_ARRAY:
-                    $this->callbackWrapper($cb, $update_req, $cb_param);            
+                    $this->callbackWrapper($cb, $update_req, $cb_param);
+                    //if (!$success)
+                    //    return false;
+
                     $this->depth--;
                     $this->state['id'] = $state_req['id'];
                     $cb_called = true;
@@ -1078,7 +1082,11 @@ class BinsonParser extends BinsonProcessor
                 }
 
                 if (!$cb_called)
+                {
                     $this->callbackWrapper($cb, $update_req, $cb_param);
+                    //if (!$success)
+                    //    return false;
+                }
     
                 switch ($scan_mode) {
                 case self::ADVANCE_ONE:
@@ -1101,6 +1109,7 @@ class BinsonParser extends BinsonProcessor
                     throw new BinsonException(binson::ERROR_ARG);
                 }                
         }
+        return true;
     }
 
     /* Utility function which return false in case of type mismatch */
@@ -1185,9 +1194,28 @@ class BinsonParser extends BinsonProcessor
         throw new BinsonException(binson::ERROR_WRONG_TYPE);
     }
 
-    private function cbValidator(array $prev_state, &$param = null) : bool
+    private function cbVerify(?array $prev_state, &$param = null) : bool
     {
-       // field order validation!
+        if (!is_array($param))
+            throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbVerify() require `array` parameter for context storage");
+
+        $new_state = $this->state['top'];
+        $depth = $this->depth;
+        $res = true;
+
+        unset($param[$depth+1]); // optimize this !!!
+
+        switch ($new_state['id']) {
+        case self::STATE_AT_ITEM_KEY:            
+            if (!isset($param[$depth]) || ($param[$depth] <=> $new_state['val']) < 0)
+            {
+                $param[$depth] = $new_state['val'];
+            }
+            else
+                throw new BinsonException(binson::ERROR_FORMAT, "field name is out of order");
+        }
+
+        return $res;
     }
 
     private function cbDeserializer(?array $prev_state, &$param = null) : bool
