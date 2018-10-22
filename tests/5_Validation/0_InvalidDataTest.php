@@ -20,16 +20,40 @@ class InvalidDataTest extends TestCase
         $this->assertSame(false, binson_verify($raw));
     }           
 
-    public function testMoreTopObjects_ddd()
+    public function testNoKeyBooleanItemInObjectAfterValue()
+    {        
+        $raw = "\x40\x14\x01\x41\x45\x44\x41"; // {'A'=>false, true}
+        $this->assertSame(false, binson_verify($raw));
+    }       
+
+    public function testNoKeyBooleanItemInObjectAfterArray()
+    {        
+        $raw = "\x40\x14\x01\x41\x42\x43\x44\x41"; // {'A'=>[], true}
+        $this->assertSame(false, binson_verify($raw));
+    }       
+
+    public function testNoKeyArrayItemInObjectAfterValue()
     {        
         $raw = "\x40\x14\x01\x41\x45\x42\x43\x41"; // {'A'=>false, []}
         $this->assertSame(false, binson_verify($raw));
     }       
 
-    public function testMoreTopObjects_fff()
+    public function testNoKeyArrayItemInObjectAfterArray()
     {        
-        $raw = "\x40\x14\x01\x20\x14\x01\x62\x42\x43\x41"; // {' ' => 'b', []}
+        $raw = "\x40\x14\x01\x41\x42\x43\x42\x43\x41"; // {'A'=>[], []}
         $this->assertSame(false, binson_verify($raw));
     }       
+
+    public function testNoKeyObjectItemInObjectAfterValue()
+    {        
+        $raw = "\x40\x14\x01\x41\x45\x40\x41\x41"; // {'A'=>false, {}}
+        $this->assertSame(false, binson_verify($raw));
+    }       
+    
+    public function testNoKeyObjectItemInObjectAfterArray()
+    {        
+        $raw = "\x40\x14\x01\x41\x42\x43\x40\x41\x41"; // {'A'=>[], {}}
+        $this->assertSame(false, binson_verify($raw));
+    }           
 }
 

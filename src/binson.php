@@ -318,7 +318,7 @@ class BinsonProcessor
         binson::TYPE_OBJECT => [
             self::STATE_UNDEFINED       =>  self::STATE_AT_OBJECT_,
             self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_OBJECT_,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_OBJECT_,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,
                                                 binson::TYPE_ARRAY  => self::STATE_AT_OBJECT_],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
             self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_OBJECT_,
@@ -342,7 +342,7 @@ class BinsonProcessor
         binson::TYPE_ARRAY => [
             self::STATE_UNDEFINED       =>  self::STATE_AT_ARRAY_,
             self::STATE_AT_ITEM_KEY     =>  self::STATE_AT_ARRAY_,
-            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_AT_ARRAY_,
+            self::STATE_AT_VALUE        =>  [binson::TYPE_OBJECT => self::STATE_ERROR,
                                              binson::TYPE_ARRAY  => self::STATE_AT_ARRAY_],
             self::STATE_IN_OBJECT_BEGIN =>  self::STATE_ERROR,
             self::STATE_IN_ARRAY_BEGIN  =>  self::STATE_AT_ARRAY_,
