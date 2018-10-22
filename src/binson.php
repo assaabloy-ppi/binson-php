@@ -74,7 +74,7 @@ abstract class binson {
         //
         'enable_numeric_fieldnames' => false,
 
-        'serializer_sort_fields'  => false,
+        'serializer_sort_fields'  => false
     ];
 
     // used to wrap strings to make it looking like BYTES for serializer
@@ -166,6 +166,26 @@ class BinsonLogger {
 };
 
 // high level wrapper
+// strict validation
+function binson_verify(string $raw, array $cfg = null) : bool
+{
+    $parser = new BinsonParser($raw);
+
+    if (is_array($cfg))
+        $writer->config = $cfg;
+
+    try
+    {
+        return $parser->verify();
+    }
+    catch (Throwable $t)
+    {
+        return null;
+    }
+}
+
+
+// high level wrapper
 function binson_encode(array $src, array $cfg = null) : ?string
 {
     $writer = new BinsonWriter();
@@ -186,7 +206,7 @@ function binson_encode(array $src, array $cfg = null) : ?string
 }
 
 // high level wrapper
-function binson_decode( string $raw, array $cfg = null ) : ?array
+function binson_decode(string $raw, array $cfg = null) : ?array
 {
     $parser = new BinsonParser($raw);
 
@@ -901,7 +921,8 @@ class BinsonParser extends BinsonProcessor
         }
         finally
         {
-            $is_valid = $is_valid && $res && $this->isDone();
+            $is_valid = $is_valid && $res && $this->isDone() &&
+                        $this->idx === strlen($this->data);  // no more data beyond top parsed object
             
             // restore parser state
             $this->reset();
