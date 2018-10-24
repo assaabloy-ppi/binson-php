@@ -11,7 +11,7 @@ $src_dir = getcwd()."/".$argv[1];
 
 echo PHP_EOL."=================================".PHP_EOL;
 echo "Binson binary files located at: ".$src_dir.PHP_EOL;
-echo "Testing for: ".$argv[2].PHP_EOL;
+echo "Expected to be: ".$argv[2].PHP_EOL;
 echo "=================================".PHP_EOL;
 
 switch ($argv[2]) {
@@ -29,6 +29,7 @@ switch ($argv[2]) {
         throw new RuntimeException();
 }
 
+$cnt = 0;
 $dir = new DirectoryIterator($src_dir);
 foreach ($dir as $fileinfo) {
     if (!$fileinfo->isDot()) {
@@ -42,4 +43,7 @@ foreach ($dir as $fileinfo) {
             //exit(1);
         }    
     }
+    $cnt++;
 }
+
+echo $cnt." test vectors processed.".PHP_EOL;
