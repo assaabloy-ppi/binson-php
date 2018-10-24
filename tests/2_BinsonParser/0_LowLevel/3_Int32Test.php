@@ -33,20 +33,9 @@ class Int32ParserTest extends TestCase
         $buf = "\x42\x13\x00\x00\x00\x80\x00\x00\x00\x00\x43";
         $parser = new BinsonParser($buf);
 
-        // expect integer overflow on 32bit PHP builds
-        $parser->config['parser_int_overflow_action'] = 'to_float';
-
         $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_INTEGER, $parser->getType());
-
-         if (PHP_INT_SIZE === 4)
-         {
-            $val = $parser->getValue(binson::TYPE_INTEGER);
-            $this->assertSame(true, is_float($val));  // internally cast to float
-            $this->assertEquals(binson::INT32_MAX+1.0, $val, '', 0.001);
-         }
-         else
-            $this->assertSame(binson::INT32_MAX+1, $parser->getValue(binson::TYPE_INTEGER));
+        $this->assertSame(binson::INT32_MAX+1, $parser->getValue(binson::TYPE_INTEGER));
     }
 
     public function testIntegerLessThanINT32_MIN()
@@ -54,22 +43,8 @@ class Int32ParserTest extends TestCase
         $buf = "\x42\x13\xff\xff\xff\x7f\xff\xff\xff\xff\x43";
         $parser = new BinsonParser($buf);
 
-        // expect integer overflow on 32bit PHP builds
-        $parser->config['parser_int_overflow_action'] = 'to_float';
-
         $parser->enterArray()->next();
         $this->assertSame(binson::TYPE_INTEGER, $parser->getType());
-
-         if (PHP_INT_SIZE === 4)
-         {
-            $val = $parser->getValue(binson::TYPE_INTEGER);
-            $this->assertSame(true, is_float($val));  // internally cast to float
-            $this->assertEquals(binson::INT32_MIN-1.0, $val, '', 0.001);
-         }
-         else
-            $this->assertSame(binson::INT32_MIN-1, $parser->getValue(binson::TYPE_INTEGER));
+        $this->assertSame(binson::INT32_MIN-1, $parser->getValue(binson::TYPE_INTEGER));
     }
-
 }
-
-?>

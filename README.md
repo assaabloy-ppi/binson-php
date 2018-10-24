@@ -29,20 +29,19 @@ if (null !== binson_decode($raw))
 Compatibility
 --------------
 
-Required PHP version is at least 7.2.x
+Required PHP version is at least 7.2.x (64bit only)
 
 Known to be stable on following platforms:
 * PHP 7.2.8 (Ubuntu 14.04.5 LTS, x86_64)
 
-Note: no PHP5 compatibility (by design)
+Notes: 
+* no PHP5 compatibility (by design)
+* no 32bit PHP version support
 
 Current status
 --------------
-* `binson_encode()` and `binson_decode()` API calls are ready!.
-* Major code cleanups required
 * Major code documentation required (? follow [WordPress inline documentation best practices](https://make.wordpress.org/core/handbook/best-practices/inline-documentation-standards/php/))
 * Unit test coverage improvement is still required.
-* Logging/debug output standartization required.
 
 Known ports
 ------------
@@ -60,7 +59,7 @@ Features
 * Instant serialization/deserialization to/from PHP native arrays
 * Declarative "state transition matrix" parsing algorithm
 * Error handling is PHP7 exception based (see `BinsonException` class)
-* Limited 64bit integer parsing on php32 builds supported (see [below](#limitation-64bit-integer-support))
+
 
 Testing
 -----------
@@ -231,45 +230,12 @@ To check for data before parsing for being valid binson:
 $is_valid = $parser->verify();
 ```
 
-Limitation: 64bit integer support
----------------------------------
-
-64bit integers are fully supported on 64bit PHP7 builds.
-
-Unfortunately, 32bit PHP do not support 64bit integers in its core.
-This library implements limited support for parsing (not writing) of 64bit integer via fallback to float type.
-
-By default this support is disabled. When trying to parse int64 field on php32 `BinsonException` (with error code `binson::ERROR_INT_OVERFLOW`) will be thrown.
-
-To enable instant int64 to float conversion during parsing, parser configuration should be updated in runtime.
-
-The code to illustrate above:
-```php
-$buf = "\x42\x13\x00\x00\x00\x00\x00\x40\x00\x00\x43";  // 2<<45
-$parser = new BinsonParser($buf);
-
-// expect integer overflow on 32bit PHP builds
-$parser->config['parser_int_overflow_action'] = 'to_float';
-
-$parser->enterArray()->next();
-
-if (PHP_INT_SIZE === 4)  // we are on php32
-{
-    $val = $parser->getValue(binson::TYPE_INTEGER);  // type check argument is optional 
-    if (is_float($val))
-        print_r($val);
-}
-```
-
-There are no guarantee to preserve all significant digits for numbers above 2^53 (9007199254740992) and below -2^53-1 (-9007199254740993). 
-
-> With the 52 bits of the fraction significand appearing in the memory format, the total precision is therefore 53 bits (approximately 16 decimal digits).... Between 2<sup>52</sup>=4,503,599,627,370,496 and 2<sup>53</sup>=9,007,199,254,740,992 the representable numbers are exactly the integers. For the next range, from 2<sup>53</sup> to 2<sup>54</sup>, everything is multiplied by 2, so the representable numbers are the even ones, etc. Conversely, for the previous range from 2<sup>51</sup> to 2<sup>52</sup>, the spacing is 0.5, etc.
-
-Source:  [wikipedia](https://en.wikipedia.org/wiki/Double-precision_floating-point_format#IEEE_754_double-precision_binary_floating-point_format:_binary64)
-
-
 
 ## Changelog
+
+#### 2018-10-24
+
+* 32bit PHP versions support dropped.
 
 #### 2018-10-12
 

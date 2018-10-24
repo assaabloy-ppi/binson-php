@@ -10,11 +10,7 @@ require_once(SRC_DIR . 'binson.php');
 class Int64WriterTest extends TestCase
 {
     public function testIntegerINT64_MAX()
-    {
-        // expect integer overflow on 32bit PHP builds
-        if (PHP_INT_SIZE === 4)
-            $this->expectException(TypeError::class);
-    
+    {    
         $buf = "";
         $writer = new BinsonWriter($buf);
 
@@ -27,10 +23,6 @@ class Int64WriterTest extends TestCase
 
     public function testIntegerINT64_MIN()
     {
-        // expect integer overflow on 32bit PHP builds
-        if (PHP_INT_SIZE === 4)
-            $this->expectException(TypeError::class);
-
         $buf = "";
         $writer = new BinsonWriter($buf);
 
@@ -41,5 +33,3 @@ class Int64WriterTest extends TestCase
         $this->assertSame("\x42\x13\x00\x00\x00\x00\x00\x00\x00\x80\x43", $writer->toBytes());
     }    
 }
-
-?>

@@ -66,7 +66,6 @@ abstract class binson {
         'max_bytes_len' => 10240,
         'max_field_count' => 1000,
         'max_depth' => 32,
-        'parser_int_overflow_action' => 'exception',  // [exception|to_float]
                 
         // add single EMPTY_KEY => EMPTY_VAL item to empty OBJECT representation
         'deserializer_add_empty_sign' => true,
@@ -1264,23 +1263,7 @@ class BinsonParser extends BinsonProcessor
         $filler = chr(ord($chunk[-1]) & 0x80 ? 0xff : 0x00);
         $chunk = str_pad($chunk, 8, $filler);
 
-        if ($len === 8 && !$is_float && PHP_INT_SIZE < 8)
-        {   
-            if ($this->config['parser_int_overflow_action'] !== 'to_float')
-                throw new BinsonException(binson::ERROR_INT_OVERFLOW);
-
-            // int64 parsing workarount on php32
-            $val = unpack('vllword/vlhword/Vhdword', $chunk);
-            $hdword_signed = unpack('l', pack('L', $val['hdword'])); // cast unsigned to signed
-            
-            $combined = $val['llword'] +
-                        $val['lhword'] * 65536.0 + 
-                        $hdword_signed[1] * 4294967296.0;
-
-            return $combined;
-        }
-
-        $val = unpack($is_float? 'e' : (PHP_INT_SIZE < 8? 'V' : 'P'), $chunk);
+        $val = unpack($is_float? 'e':'P', $chunk);
         $v = $val[1];
 
         if ($is_float)
@@ -1324,7 +1307,7 @@ function util_pack_size($val, int $type_hint) : string
 {
     $val_bytes = array_fill(0, 9, 0);
     $size = 0;
-    $val_pack_code = PHP_INT_SIZE > 4? 'P':'V'; // 32bit:64bit unsigned LE
+    $val_pack_code = 'P'; // 64bit unsigned LE
 
     switch ($type_hint)
     {

@@ -23,10 +23,6 @@ class Int32WriterTest extends TestCase
 
     public function testIntegerMoreThanINT32_MAX()
     {
-        // expect integer overflow on 32bit PHP builds
-        if (PHP_INT_SIZE === 4)
-            $this->expectException(TypeError::class);
-
         $buf = "";
         $writer = new BinsonWriter($buf);
 
@@ -51,10 +47,6 @@ class Int32WriterTest extends TestCase
 
     public function testIntegerLessThanINT32_MIN()
     {
-        // expect integer overflow on 32bit PHP builds
-        if (PHP_INT_SIZE === 4)
-            $this->expectException(TypeError::class);
-
         $buf = "";
         $writer = new BinsonWriter($buf);
 
@@ -64,7 +56,4 @@ class Int32WriterTest extends TestCase
                
         $this->assertSame("\x42\x13\xff\xff\xff\x7f\xff\xff\xff\xff\x43", $writer->toBytes());
     }     
-
 }
-
-?>
