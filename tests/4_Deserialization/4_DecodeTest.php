@@ -20,6 +20,12 @@ class DecodeTest extends TestCase
         $this->assertSame(['a' => true], $arr);
     }    
 
+    public function testSimpleObjectNestedSuccessfull() 
+    {        
+        $arr = binson_decode("\x42\x40\x14\x01\x41\x42\x14\x01\x41\x43\x41\x43");
+        $this->assertSame([['A' => ['A']]], $arr);
+    }
+
     public function testFailureEmpty() 
     {        
         $arr = binson_decode("");

@@ -868,8 +868,14 @@ class BinsonParser extends BinsonProcessor
 
         return false;
     }
-    
-    public function toString() : string
+
+    public function toJson() : string
+    {
+        /* generate php-array string repr -> eval -> json_encode() */
+        return '';
+    }
+
+    public function toString(bool $php_native = false) : string
     {
         $str = '';
         $res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbToString'], $str);
@@ -1191,7 +1197,10 @@ class BinsonParser extends BinsonProcessor
         $new_state = $this->state['top'];
         $parent_state = $this->state['parent'];
         $depth = $this->depth;
-                
+        
+        if (!$depth)
+            $local_comma = false;
+
         switch ($new_state['id']) {
             case self::STATE_AT_OBJECT_:
             case self::STATE_AT_ARRAY_:
@@ -1217,7 +1226,9 @@ class BinsonParser extends BinsonProcessor
                 $local_comma = true;
                 return true;
             case self::STATE_AT_ITEM_KEY:
+                $param .= $local_comma? ',' : '';
                 $param .= '"'.$new_state['val'].'":';
+                $local_comma = false;
                 return true;
             case self::STATE_AT_VALUE:
             {

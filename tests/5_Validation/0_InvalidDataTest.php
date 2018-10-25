@@ -62,11 +62,56 @@ class InvalidDataTest extends TestCase
         $this->assertSame(false, binson_verify($raw));
     }          
 
+    public function testKeyWrongOrderCase()
+    {        
+        $raw = "\x40\x14\x01\x61\x45\x14\x01\x41\x45\x41" ; // {'a'=>false, 'A'=>false}
+        $this->assertSame(false, binson_verify($raw));
+    }          
+
     public function testKeyWrongOrderWithNumericKey()
     {        
         $raw = "\x40\x14\x01\x41\x42\x43\x14\x01\x37\x42\x43\x41" ; // {'A'=>[], '7'=>[]}
         $this->assertSame(false, binson_verify($raw));
     }          
+
+    public function testBrokenInternalArray()
+    {        
+        $raw = "\x42\x43\x43"; // []]
+        $this->assertSame(false, binson_verify($raw));
+    }
+
+    public function testOnlyFieldName()
+    {        
+        $raw = "\x40\x14\x01\x00\x41"; // {''=>}
+        $this->assertSame(false, binson_verify($raw));
+    }
+
+    public function testNoData()
+    {        
+        $raw = "";
+        $this->assertSame(false, binson_verify($raw));
+    }
+    
+    public function testObjectNested3Empty()
+    { 
+        $buf = "\x40\x14\x01\x61\x40\x40\x41\x41\x41";  // {'a':{{}}}
+        $parser = new BinsonParser($buf);
+        $this->assertSame(false, $parser->verify());
+    }    
+
+    public function test_AFL_Reported1()
+    { 
+        $buf = "\x40\x19\xd3\x03\x41";
+        $parser = new BinsonParser($buf);
+        $this->assertSame(false, $parser->verify());        
+    }  
+
+    public function testBrokenStrLen()
+    { 
+        $buf = "\x40\x14\xFF\x41\x14\x01\x43\x41";
+        $parser = new BinsonParser($buf);
+        $this->assertSame(false, $parser->verify());        
+    }  
 
 }
 
