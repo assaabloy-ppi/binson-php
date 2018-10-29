@@ -73,7 +73,9 @@ abstract class binson {
         //
         'enable_numeric_fieldnames' => false,
 
-        'serializer_sort_fields'  => false
+        // for now 'true' by default to keep things consistant
+        // should be 'false' by default after refactoring in v2.0
+        'serializer_sort_fields'  => true
     ];
 
     // used to wrap strings to make it looking like BYTES for serializer
@@ -566,7 +568,10 @@ class BinsonWriter extends BinsonProcessor
                 if (binson::EMPTY_ARRAY === $var)
                     return $this->arrayBegin()->arrayEnd();                     
 
-                $var = self::sortDeeply($var);
+                // for now 'true' by default to keep things consistant
+                // should be 'false' by default after refactoring in v2.0
+                if ($this->config['serializer_sort_fields']) 
+                    $var = self::sortDeeply($var);
                 break;        
 
             case "integer":  return $this->putInteger($var);
@@ -877,10 +882,6 @@ class BinsonParser extends BinsonProcessor
 
     public function toString(bool $php_native = false) : string
     {
-        //$str = '';
-        //$res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbToString'], $str);
-        //return $str;
-
         $ctx = ['data'=>'', 'comma'=>false];
         $res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbToString'], $ctx);
         return $res? $ctx['data'] : null;
@@ -1117,7 +1118,7 @@ class BinsonParser extends BinsonProcessor
             throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbDeserializer() require `array` parameter");
 
         if (empty($param)) {  // first cb run
-                $param = ['data'=>[], 'parent'=>[]];
+                $param = ['data'=>[], 'parent'=>[], 'names'=>[]];
                 $param['current'] = &$param['data'];
         }            
 
@@ -1134,6 +1135,8 @@ class BinsonParser extends BinsonProcessor
                 return true;
 
             case self::STATE_IN_OBJECT_BEGIN:
+                unset($param['names'][$depth]);
+                /* fallthrough */
             case self::STATE_IN_ARRAY_BEGIN:
                 $param['parent'][] = &$param['current'];    
 
@@ -1162,7 +1165,13 @@ class BinsonParser extends BinsonProcessor
                 return true;
 
             case self::STATE_AT_ITEM_KEY:
+                if (!isset($param['names'][$depth]) || 
+                          ($param['names'][$depth] <=> $new_state['val']) < 0)
+                    $param['names'][$depth] = $new_state['val'];
+                else
+                    throw new BinsonException(binson::ERROR_FORMAT, "field name is out of order");
                 return true;
+                
             case self::STATE_AT_VALUE:
             {                
                 switch ($new_state['type']) {
