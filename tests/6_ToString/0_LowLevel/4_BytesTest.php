@@ -20,17 +20,17 @@ class BytesToStringTest extends TestCase
     }
 
     public function testBytesEmpty()
-    { $this->processBytes('[""]', ""); }
+    { $this->processBytes('["0x"]', ""); }
 
     public function testBytesSingleZero()
-    { $this->processBytes('["00"]', "\x00"); }
+    { $this->processBytes('["0x00"]', "\x00"); }
 
     public function testBytesWithZeroes()
-    { $this->processBytes('["00ff002200"]', "\x00\xff\x00\x22\x00"); }
+    { $this->processBytes('["0x00ff002200"]', "\x00\xff\x00\x22\x00"); }
 
     public function testBytesLong()    
     {   
         $long_str = str_repeat("\x03", 1024*100);
-        $this->processBytes('["'.bin2hex($long_str).'"]', $long_str); 
+        $this->processBytes('["0x'.bin2hex($long_str).'"]', $long_str); 
     }
 }

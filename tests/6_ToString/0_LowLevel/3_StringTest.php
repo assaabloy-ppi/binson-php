@@ -26,7 +26,7 @@ class StringToStringTest extends TestCase
     { $this->processString('["abcd"]', "abcd"); }
 
     public function testString_UTF8_()
-    { $this->processString('["gr\u00f6\u00dfer"]', "größer"); }
+    { $this->processString('["größer"]', "größer"); }
 
     public function testStringLong()    
     {   

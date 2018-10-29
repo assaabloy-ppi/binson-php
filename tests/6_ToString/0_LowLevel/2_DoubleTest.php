@@ -20,19 +20,22 @@ class DoubleToStringTest extends TestCase
     }
     
     public function testDoublePlusZero()
-    { $this->processDouble('[0]', +0.0); }
+    { $this->processDouble('[0.0]', +0.0); }
 
     public function testDoubleMinusZero()
-    { $this->processDouble('[-0]', -0.0); }
+    { $this->processDouble('[-0.0]', -0.0); }
+
+    public function testDouble()
+    { $this->processDouble('[3.141593]', 3.141593); }        
 
     public function testDoublePositiveExponent()
-    { $this->processDouble('[31415000000]', +3.1415e+10); }
+    { $this->processDouble('[31415000000.0]', +3.1415e+10); }
 
     public function testDoublePositiveHugeExponent()
-    { $this->processDouble('[3.1415e+99]', +3.1415e+99); }
+    { $this->processDouble('[3.1415E+99]', +3.1415e+99); }
 
     public function testDoubleNegativeExponent()
-    { $this->processDouble('[-3.1415e-10]', -3.1415e-10); }
+    { $this->processDouble('[-3.1415E-10]', -3.1415e-10); }
 
     public function testDouble_NAN_()
     { $this->processDouble('[NAN]', NAN); }

@@ -37,8 +37,8 @@ test.overnight: ## Run some heavy fuzzy tests in continuous mode
 test.c: ## Run verification tests against test data located in 'binson-c-light' repository
 	mkdir -p temp && cd temp && \
 	(git -C binson-c-light pull || git clone https://github.com/assaabloy-ppi/binson-c-light.git) && \
-	php ../tests/6_Functional/VerifyTestVectorDir.php ./binson-c-light/utest/test_data valid  && \
-	php ../tests/6_Functional/VerifyTestVectorDir.php ./binson-c-light/utest/test_data invalid
+	php ../tests/7_Functional/VerifyTestVectorDir.php ./binson-c-light/utest/test_data valid  && \
+	php ../tests/7_Functional/VerifyTestVectorDir.php ./binson-c-light/utest/test_data invalid
 
 
 coverage: ## Generate code coverage report and open browser for viewing it

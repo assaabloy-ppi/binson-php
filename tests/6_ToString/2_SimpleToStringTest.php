@@ -56,7 +56,7 @@ class Value1ToStringTest extends TestCase
 
     public function testSimpleValueCheck()
     {
-        $this->process('[true,-12345,3.415,"abcde","008100ff00"]',
+        $this->process('[true,-12345,3.415,"abcde","0x008100ff00"]',
             "\x42\x44\x11\xc7\xcf\x46\x52\xb8\x1e\x85\xeb\x51\x0b\x40\x14\x05\x61\x62".
             "\x63\x64\x65\x18\x05\x00\x81\x00\xff\x00\x43");
     } 
@@ -65,7 +65,7 @@ class Value1ToStringTest extends TestCase
     {
         $this->process('[{"A":["A"]}]', "\x42\x40\x14\x01\x41\x42\x14\x01\x41\x43\x41\x43");
     } 
-
+ 
     public function testSimpleValuesNestedObject2()
     {
         $this->process('{"A":[{"A":"A"}]}', "\x40\x14\x01\x41\x42\x40\x14\x01\x41\x14\x01\x41\x41\x43\x41");

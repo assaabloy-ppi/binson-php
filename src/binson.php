@@ -877,16 +877,21 @@ class BinsonParser extends BinsonProcessor
 
     public function toString(bool $php_native = false) : string
     {
-        $str = '';
-        $res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbToString'], $str);
-        return $str;
+        //$str = '';
+        //$res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbToString'], $str);
+        //return $str;
+
+        $ctx = ['data'=>'', 'comma'=>false];
+        $res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbToString'], $ctx);
+        return $res? $ctx['data'] : null;
     }
 
     public function deserialize() : array
     {
-        $arr = [];
-        $res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbDeserializer'], $arr);
-        return $res? $arr['data'][0] : null;
+        // try here alternate way via toString()
+        $ctx = [];
+        $res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbDeserializer'], $ctx);
+        return $res? $ctx['data'][0] : null;
     }    
 
     /*======= Private method implementations ====================================*/
@@ -1189,46 +1194,40 @@ class BinsonParser extends BinsonProcessor
 
     private function cbToString(?array $prev_state, &$param = null) : bool
     {        
-        static $local_comma = false;
-
-        if (!is_string($param))
-            throw new BinsonException(binson::ERROR_WRONG_TYPE, "cbToString() require `string` parameter");
+        if (!is_string($param['data']))
+            throw new BinsonException(binson::ERROR_WRONG_TYPE, "wrong context");
 
         $new_state = $this->state['top'];
         $parent_state = $this->state['parent'];
         $depth = $this->depth;
         
-        if (!$depth)
-            $local_comma = false;
-
         switch ($new_state['id']) {
             case self::STATE_AT_OBJECT_:
             case self::STATE_AT_ARRAY_:
-                $param .= $local_comma? ',' : '';
+                $param['data'] .= $param['comma']? ',' : '';
             case self::STATE_IN_OBJECT_END_:
             case self::STATE_IN_ARRAY_END_:
                 return true;
-
             case self::STATE_IN_ARRAY_BEGIN:                
-                $local_comma = false;
-                $param .= '[';
+                $param['comma'] = false;
+                $param['data'] .= '[';
                 return true;
             case self::STATE_IN_OBJECT_BEGIN:
-                $local_comma = false;
-                $param .= '{';
+                $param['comma'] = false;
+                $param['data'] .= '{';
                 return true;
             case self::STATE_OUTOF_ARRAY:
-                $param .= ']';
-                $local_comma = true;
+                $param['data'] .= ']';
+                $param['comma'] = true;
                 return true;
             case self::STATE_OUTOF_OBJECT:
-                $param .= '}';
-                $local_comma = true;
+                $param['data'] .= '}';
+                $param['comma'] = true;
                 return true;
             case self::STATE_AT_ITEM_KEY:
-                $param .= $local_comma? ',' : '';
-                $param .= '"'.$new_state['val'].'":';
-                $local_comma = false;
+                $param['data'] .= $param['comma']? ',' : '';
+                $param['data'] .= '"'.$new_state['val'].'":';
+                $param['comma'] = false;
                 return true;
             case self::STATE_AT_VALUE:
             {
@@ -1236,20 +1235,21 @@ class BinsonParser extends BinsonProcessor
                 if (!($new_state['type'] & self::TYPE_MASK_VALUE))
                     return true;
 
-                $param .= $local_comma? ',' : '';
-                $local_comma = true;
+                $param['data'] .= $param['comma']? ',' : '';
+                $param['comma'] = true;
 
                 switch ($new_state['type']) {
                 case binson::TYPE_BOOLEAN:
-                case binson::TYPE_DOUBLE:
+                case binson::TYPE_DOUBLE:                
                 case binson::TYPE_INTEGER:
-                    $param .= var_export($new_state['val'], true);
+                    $param['data'] .= var_export($new_state['val'], true);
                     return true;
+
                 case binson::TYPE_STRING:
-                    $param .= '"'.$new_state['val'].'"';
+                    $param['data'] .= '"'.$new_state['val'].'"';
                     return true;
                 case binson::TYPE_BYTES:
-                    $param .= '"'.bin2hex($new_state['val']).'"';
+                    $param['data'] .= '"0x'.bin2hex($new_state['val']).'"';
                     return true;
     
                 default: /* we should not get here */

@@ -23,7 +23,7 @@ class ComplexToStringTest extends TestCase
 
     public function testComplex1()
     { 
-        $this->process('{"A":"B","B":{"A":"B"},"C":["A","A",{"A":"B","B":["A","A",{"A":"B"},[[[[{"A":"B"}]]]]]},"A"],"D":3.141593,"E":false,"F":127,"G":"0x0202"}',
+        $this->process('{"A":"B","B":{"A":"B"},"C":["A","A",{"A":"B","B":["A","A",{"A":"B"},[[[[{"A":"B"}]]]]]},"A"],"D":3.141592653589793,"E":false,"F":127,"G":"0x0202"}',
                     "\x40\x14\x01\x41\x14\x01\x42\x14\x01\x42\x40\x14\x01\x41\x14\x01\x42".
                     "\x41\x14\x01\x43\x42\x14\x01\x41\x14\x01\x41\x40\x14\x01\x41\x14\x01".
                     "\x42\x14\x01\x42\x42\x14\x01\x41\x14\x01\x41\x40\x14\x01\x41\x14\x01".
