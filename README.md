@@ -41,9 +41,8 @@ Notes:
 Current status
 --------------
 
-* Schedulled release v1.0 for 2018-Nov-5
-* No new features planed till release date
-* All development moved to v2.0 branch from now
+* Release v1.0 (created 2018-Nov-5)
+* All heavy development moved to v2.0 branch
 * Major code documentation required (? follow [WordPress inline documentation best practices](https://make.wordpress.org/core/handbook/best-practices/inline-documentation-standards/php/))
 
 Known ports
@@ -235,6 +234,11 @@ $is_valid = $parser->verify();
 
 
 ## Changelog
+
+#### 2018-11-5
+
+* Release v1.0
+
 
 #### 2018-10-29
 
