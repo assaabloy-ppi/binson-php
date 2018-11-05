@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 abstract class binson {
-    const BINSON_API_VERSION = 'binson_php_v0.0.1a';
+    const BINSON_API_VERSION = 'binson_php_v1.0.0r';
 
     /* ported from stdint.h */
     const INT8_MIN   = (-0x7f - 1);
