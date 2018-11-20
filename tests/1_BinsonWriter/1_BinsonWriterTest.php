@@ -217,4 +217,48 @@ class BinsonWriterTest extends TestCase
 
         $this->assertSame("\x42\x42\x45\x43\x43", $writer->toBytes());
     }
+
+    public function testOutOfOrderFields() 
+    {
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $this->expectException('BinsonException');
+
+        $writer->objectBegin()
+                    ->putName('b')
+                    ->putInteger(1)
+                    ->putName('a')
+                    ->putInteger(2)
+               ->objectEnd();                       
+    }    
+
+    public function testSameNameOnDifferentLevels()
+    {
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $this->expectException('BinsonException');
+
+        $writer->objectBegin()
+                    ->putName('b')
+                    ->arrayBegin()->arrayEnd()
+                    ->putName('a')
+                    ->arrayBegin()->arrayEnd()                    
+               ->objectEnd();                       
+    }    
+
+    public function test_putName_InArray()
+    {
+        $buf = "";
+        $writer = new BinsonWriter($buf);
+
+        $this->expectException('BinsonException');
+
+        $writer->arrayBegin()
+                    ->putName('b')
+                    ->arrayBegin()->arrayEnd()
+               ->arrayEnd();
+    }    
+
 }

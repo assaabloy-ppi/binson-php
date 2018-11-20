@@ -438,24 +438,34 @@ class BinsonWriter extends BinsonProcessor
 
    public function objectBegin() : BinsonWriter
     {
+        $this->depth++;
+        $this->state['block_type'] = binson::TYPE_OBJECT;
+
         $this->writeToken(binson::TYPE_OBJECT, binson::DEF_OBJECT_BEGIN);
         return $this;
     }
 
     public function objectEnd() : BinsonWriter
     {
+        unset($this->state['name']);        
+        $this->depth--;
         $this->writeToken(binson::TYPE_OBJECT_END, binson::DEF_OBJECT_END);
         return $this;
     }
 
     public function arrayBegin() : BinsonWriter
     {
+        $this->depth++;
+        $this->state['block_type'] = binson::TYPE_ARRAY;
+
         $this->writeToken(binson::TYPE_ARRAY, binson::DEF_ARRAY_BEGIN);
     	return $this;
     }
 
     public function arrayEnd() : BinsonWriter
     {
+        unset($this->state['name']);
+        $this->depth--;
         $this->writeToken(binson::TYPE_ARRAY_END, binson::DEF_ARRAY_END);
     	return $this;
     }
@@ -496,6 +506,14 @@ class BinsonWriter extends BinsonProcessor
 
     public function putName(string $val) : BinsonWriter
     {
+        if ($this->state['block_type'] === binson::TYPE_ARRAY)
+            throw new BinsonException(binson::ERROR_STATE);
+
+        if (isset($this->state['name']) && ($val <=> $this->state['name']) <= 0)
+            throw new BinsonException(binson::ERROR_ARG);
+        
+        $this->state['name'] = $val;
+
         $this->writeToken(binson::TYPE_STRING, $val);
         return $this;
     }
