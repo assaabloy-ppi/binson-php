@@ -49,8 +49,6 @@ class NavigationParserTest extends TestCase
             $this->assertSame(false, $parser->field("d"));  // no field
 
             $this->assertSame(true, $parser->verify());  
-} 
-
+    } 
 
 }
-    

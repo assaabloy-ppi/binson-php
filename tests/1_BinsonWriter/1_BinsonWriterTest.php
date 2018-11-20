@@ -217,38 +217,4 @@ class BinsonWriterTest extends TestCase
 
         $this->assertSame("\x42\x42\x45\x43\x43", $writer->toBytes());
     }
-
- /*  public function testVerifySuccess() 
-    {
-        $this->markTestSkipped('implement in parser first');
-
-        $buf = "\x40\x41";
-        $writer = new BinsonWriter($buf);
-        $this->assertSame(true, $writer->verify());
-    }
-
-    public function testVerifyFailure() 
-    {
-        $this->markTestSkipped('implement in parser first');
-
-        $buf = "\x40\x11\x41";
-        $writer = new BinsonWriter($buf);
-        $this->assertSame(false, $writer->verify());
-    }
-*/    
-
-/*    public function testExceptions() 
-    {
-        $buf = str_repeat('_', 1);
-
-        $writer = new BinsonWriter($buf);
-
-        $this->expectException(Exception::class);
-        $writer->putString("abcde");
-    }
-*/    
-
-
 }
-
-?>

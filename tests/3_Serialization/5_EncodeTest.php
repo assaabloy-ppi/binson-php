@@ -19,26 +19,10 @@ class EncodeTest extends TestCase
         $arr = binson_encode(['a' => true]);
         $this->assertSame("\x40\x14\x01\x61\x44\x41", $arr);
     }       
-   
-/* fix!!!    
-    public function testFailureNegativeIntKey() 
-    {        
-        $str = binson_encode([-2=>'a']);
-        $this->expectException('BinsonException');
-    }
-
-    public function testFailureNullValue()
-    {        
-        $str = binson_encode([null]);
-        $this->expectException('BinsonException');
-    }
 
     public function testFailureObjectArrayMixed()
     {        
         $str = binson_encode(['a'=>1, false]);
-        $this->expectException('BinsonException');
+        $this->assertSame(null, $str);
     }    
-    */
-
 }
-

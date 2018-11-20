@@ -75,7 +75,7 @@ abstract class binson {
 
         // for now 'true' by default to keep things consistant
         // should be 'false' by default after refactoring in v2.0
-        'serializer_sort_fields'  => true
+        'serializer_sort_fields'  => false
     ];
 
     // used to wrap strings to make it looking like BYTES for serializer
@@ -533,12 +533,6 @@ class BinsonWriter extends BinsonProcessor
     	return substr($this->data, $this->data_len);
     }
 
-    public function verify() : bool
-    {
-        //$p = new BinsonParser($this->toBytes());
-        //return $p->verify();
-    }
-
     public function put(...$vars) : BinsonWriter
     {
         foreach ($vars as $var)
@@ -611,7 +605,7 @@ class BinsonWriter extends BinsonProcessor
             }          
         
             if ($depth > $last_depth) {  // new block detected
-                $block_type = (is_int($key) && $key !== binson::EMPTY_KEY) ?
+                $block_type = (is_int($key) && $key === 0)/*!== binson::EMPTY_KEY)*/ ?
                                 binson::TYPE_ARRAY :  binson::TYPE_OBJECT;       
                 $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayBegin() : $this->objectBegin();
                 $type_stack[] = $block_type;
@@ -620,18 +614,26 @@ class BinsonWriter extends BinsonProcessor
                 $res = ($block_type == binson::TYPE_ARRAY) ? $this->arrayEnd() : $this->objectEnd();
                 $block_type = array_pop($type_stack);              
             }        
-        
+                        
             if ($value !== null && $block_type === binson::TYPE_OBJECT)
             {   
+                //if (is_int($key))
+                //    throw new BinsonException(binson::ERROR_WRONG_TYPE);
+
                 // numeric fields support workaround
-                if (strlen($key) > 1 && $key[-1] === '.')
+                /*if (strlen($key) > 1 && $key[-1] === '.')
                 {
                     $key2 = substr($key, 0, -1);
                     if ((string) (int) $key2 === $key2) // valid integer representation
                         $key = $key2;
-                }
+                }*/
+                if (is_int($key) && $key == 0)
+                    throw new BinsonException(binson::ERROR_WRONG_TYPE);
 
-                $this->putName($key); 
+                if (!is_string($key) && !is_int($key))
+                    throw new BinsonException(binson::ERROR_WRONG_TYPE);
+
+                $this->putName((string)$key); 
             }
             
             if (is_array($value) )
