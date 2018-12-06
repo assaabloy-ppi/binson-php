@@ -60,21 +60,6 @@ abstract class binson {
     const ERROR_INT_OVERFLOW   = 10;
 
     const CFG_DEFAULT  = [
-        'max_raw_size' => 40*1000000, 
-        'max_name_len' => 1024,
-        'max_string_len' => 10240,
-        'max_bytes_len' => 10240,
-        'max_field_count' => 1000,
-        'max_depth' => 32,
-                
-        // add single EMPTY_KEY => EMPTY_VAL item to empty OBJECT representation
-        'deserializer_add_empty_sign' => true,
-        
-        //
-        'enable_numeric_fieldnames' => false,
-
-        // for now 'true' by default to keep things consistant
-        // should be 'false' by default after refactoring in v2.0
         'serializer_sort_fields'  => false
     ];
 
@@ -84,7 +69,7 @@ abstract class binson {
         return (object)$s;
     }
 
-    // do nothing, just to have couple: BYTES() & STRING()
+    // do nothing, just to have a pair: BYTES() & STRING()
     static function STRING(string $s)
     {
         return $s;
@@ -103,7 +88,6 @@ abstract class binson {
         return is_string($var)? true : false;
     }    
 }
-
 
 class BinsonException extends Exception
 {
@@ -135,7 +119,7 @@ class BinsonException extends Exception
     }
 }
 
-// strict validation
+
 function binson_verify(string $raw, array $cfg = null) : bool
 {
     $parser = new BinsonParser($raw, $cfg);
@@ -151,7 +135,6 @@ function binson_verify(string $raw, array $cfg = null) : bool
 }
 
 
-// high level wrapper
 function binson_encode(array $src, array $cfg = null) : ?string
 {   
     $dst = null;
@@ -164,12 +147,11 @@ function binson_encode(array $src, array $cfg = null) : ?string
     }
     catch (Throwable $t)
     {
-        // add here some error reporting to user (e.g with binson_get_last_error() ? )
         return null;
     }    
 }
 
-// high level wrapper
+
 function binson_decode(string $raw, array $cfg = null) : ?array
 {
     $parser = new BinsonParser($raw, $cfg);
@@ -180,47 +162,45 @@ function binson_decode(string $raw, array $cfg = null) : ?array
     }
     catch (Throwable $t)
     {
-        // add here some error reporting to user (e.g with binson_get_last_error() ? )
         return null;
     }
 }
 
-class BinsonProcessor
+abstract class BinsonProcessor
 {
     // Suffix "_" means helper state: no new data required to make 
     // transition from current state to next state
-     const STATE_UNDEFINED       = 0x0001;  // before any parsing
-     const STATE_AT_OBJECT_      = 0x0002;  // positioned at object start
-     const STATE_AT_ARRAY_       = 0x0004;  // positioned at array start
-     const STATE_AT_ITEM_KEY     = 0x0008;  // positioned at "name" of "name:value" pair
-     const STATE_AT_VALUE        = 0x0010;  // positioned at primitive value of array or "name:value" pair
-     const STATE_IN_OBJECT_BEGIN = 0x0020;  // just entered current object
-     const STATE_IN_OBJECT_END_  = 0x0040;  // end of object detected    
-     const STATE_IN_ARRAY_BEGIN  = 0x0080;  // just entered current array
-     const STATE_IN_ARRAY_END_   = 0x0100;  // end of array detected
-     const STATE_OUTOF_OBJECT    = 0x0200;  // just leaved object, but not moved further
-     const STATE_OUTOF_ARRAY     = 0x0400;  // just leaved array, but not moved further
+    const STATE_UNDEFINED       = 0x0001;  // before any parsing
+    const STATE_AT_OBJECT_      = 0x0002;  // positioned at object start
+    const STATE_AT_ARRAY_       = 0x0004;  // positioned at array start
+    const STATE_AT_ITEM_KEY     = 0x0008;  // positioned at "name" of "name:value" pair
+    const STATE_AT_VALUE        = 0x0010;  // positioned at primitive value of array or "name:value" pair
+    const STATE_IN_OBJECT_BEGIN = 0x0020;  // just entered current object
+    const STATE_IN_OBJECT_END_  = 0x0040;  // end of object detected    
+    const STATE_IN_ARRAY_BEGIN  = 0x0080;  // just entered current array
+    const STATE_IN_ARRAY_END_   = 0x0100;  // end of array detected
+    const STATE_OUTOF_OBJECT    = 0x0200;  // just leaved object, but not moved further
+    const STATE_OUTOF_ARRAY     = 0x0400;  // just leaved array, but not moved further
 
-     const STATE_DONE            = 0x0800;
-     const STATE_ERROR           = 0x1000;
-     const STATE_NO_RULE         = 0x2000;  // missing state transition rule
+    const STATE_DONE            = 0x0800;
+    const STATE_ERROR           = 0x1000;
+    const STATE_NO_RULE         = 0x2000;  // missing state transition rule
 
-     const STATE_MASK_BLOCK_BEGIN = self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN;
+    const STATE_MASK_BLOCK_BEGIN = self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN;
 
-     const STATE_MASK_NEED_INPUT = self::STATE_UNDEFINED | 
-                                          self::STATE_AT_VALUE | self::STATE_AT_ITEM_KEY | 
-                                          self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN |
-                                          self::STATE_OUTOF_OBJECT | self:: STATE_OUTOF_ARRAY;
+    const STATE_MASK_NEED_INPUT = self::STATE_UNDEFINED | 
+                                        self::STATE_AT_VALUE | self::STATE_AT_ITEM_KEY | 
+                                        self::STATE_IN_OBJECT_BEGIN | self::STATE_IN_ARRAY_BEGIN |
+                                        self::STATE_OUTOF_OBJECT | self:: STATE_OUTOF_ARRAY;
 
     /* states are ok to stop on, when ADVANCE_NEXT is applied  */
-     const STATE_MASK_NEXT = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
-                                    self::STATE_AT_VALUE  |
-                                    self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
+    const STATE_MASK_NEXT = self::STATE_AT_OBJECT_ | self::STATE_AT_ARRAY_ |
+                                self::STATE_AT_VALUE  |
+                                self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
 
-    // EndOfBlock                                        
-     const STATE_MASK_EOB = self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
+    const STATE_MASK_EOB = self::STATE_IN_OBJECT_END_ | self::STATE_IN_ARRAY_END_;
 
-     const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR | self::STATE_NO_RULE;
+    const STATE_MASK_EXIT   = self::STATE_DONE | self::STATE_ERROR | self::STATE_NO_RULE;
 
     const TYPE_MASK_VALUE     = binson::TYPE_BOOLEAN | binson::TYPE_INTEGER |
                                 binson::TYPE_DOUBLE | binson::TYPE_STRING | binson::TYPE_BYTES;
@@ -314,7 +294,7 @@ class BinsonProcessor
 
     /* Priority=2. Default state transition matrix */
     const BLOCK_TYPE_TO_STATE_MX = [
-        binson::TYPE_NONE => [ // top level
+        binson::TYPE_NONE => [ 
             self::STATE_AT_OBJECT_      =>  self::STATE_IN_OBJECT_BEGIN,            
             self::STATE_AT_ARRAY_       =>  self::STATE_IN_ARRAY_BEGIN,            
             self::STATE_OUTOF_OBJECT    =>  self::STATE_DONE,
@@ -440,7 +420,6 @@ class BinsonWriter extends BinsonProcessor
     {
         $this->depth++;
         $this->state['block_type'] = binson::TYPE_OBJECT;
-
         $this->writeToken(binson::TYPE_OBJECT, binson::DEF_OBJECT_BEGIN);
         return $this;
     }
@@ -457,7 +436,6 @@ class BinsonWriter extends BinsonProcessor
     {
         $this->depth++;
         $this->state['block_type'] = binson::TYPE_ARRAY;
-
         $this->writeToken(binson::TYPE_ARRAY, binson::DEF_ARRAY_BEGIN);
     	return $this;
     }
@@ -569,7 +547,7 @@ class BinsonWriter extends BinsonProcessor
         return $arr;
     }
 
-    public function putOne($var) : BinsonWriter
+    private function putOne($var) : BinsonWriter
     {
         if (!$this->isSerializable($var))
            throw new BinsonException(binson::ERROR_WRONG_TYPE);
@@ -580,8 +558,6 @@ class BinsonWriter extends BinsonProcessor
                 if (binson::EMPTY_ARRAY === $var)
                     return $this->arrayBegin()->arrayEnd();                     
 
-                // for now 'true' by default to keep things consistant
-                // should be 'false' by default after refactoring in v2.0
                 if ($this->config['serializer_sort_fields']) 
                     $var = self::sortDeeply($var);
                 break;        
@@ -635,16 +611,6 @@ class BinsonWriter extends BinsonProcessor
                         
             if ($value !== null && $block_type === binson::TYPE_OBJECT)
             {   
-                //if (is_int($key))
-                //    throw new BinsonException(binson::ERROR_WRONG_TYPE);
-
-                // numeric fields support workaround
-                /*if (strlen($key) > 1 && $key[-1] === '.')
-                {
-                    $key2 = substr($key, 0, -1);
-                    if ((string) (int) $key2 === $key2) // valid integer representation
-                        $key = $key2;
-                }*/
                 if (is_int($key) && $key == 0)
                     throw new BinsonException(binson::ERROR_WRONG_TYPE);
 
@@ -659,7 +625,7 @@ class BinsonWriter extends BinsonProcessor
               if ($value === [])
                 $this->arrayBegin()->arrayEnd(); 
             }
-            elseif ($value !== null)  // $value is NOT array
+            elseif ($value !== null)  // $value is NOT an array
                 $this->putOne($value);
 
             $last_depth = $depth;
@@ -704,8 +670,6 @@ class BinsonWriter extends BinsonProcessor
 
             return false;
     }
-
-    /*======= Private method implementations ====================================*/
 
     private function writeToken(int $token_type, $val = null) : void
     {
@@ -766,10 +730,6 @@ class BinsonStateStack implements ArrayAccess
             $this->data[$this->bp->depth][$offset] = $value;
     }
 
-    /*public function pop() {
-        return array_pop($this->data);
-    }*/
-
     public function offsetExists($offset) {
         return isset($this->data[$this->bp->depth][$offset]);
     }
@@ -782,7 +742,6 @@ class BinsonStateStack implements ArrayAccess
 
 class BinsonParser extends BinsonProcessor
 {
-    /* private data members */
     private $idx;
 
     public function __construct(string &$src, array $cfg = null)
@@ -799,11 +758,6 @@ class BinsonParser extends BinsonProcessor
         $this->idx = 0;
         
         parent::reset();
-    }
-
-    public function dump() : string
-    {
-        return print_r($this, true);
     }
 
     public function verify() : bool
@@ -852,19 +806,19 @@ class BinsonParser extends BinsonProcessor
 
     public function leaveObject() : BinsonParser
     {   
-        $this->advance(self::ADVANCE_LEAVE_BLOCK);  // more checks
+        $this->advance(self::ADVANCE_LEAVE_BLOCK);
         return $this;
     }
 
     public function leaveArray() : BinsonParser
     {
-        $this->advance(self::ADVANCE_LEAVE_BLOCK);  // more checks
+        $this->advance(self::ADVANCE_LEAVE_BLOCK);
         return $this;
     }
 
     public function next() : bool
     {
-        return $this->advance(self::ADVANCE_NEXT);  // more checks
+        return $this->advance(self::ADVANCE_NEXT);
     }
 
     public function ensure(int $type) : bool
@@ -894,12 +848,6 @@ class BinsonParser extends BinsonProcessor
         return false;
     }
 
-    public function toJson() : string
-    {
-        /* generate php-array string repr -> eval -> json_encode() */
-        return '';
-    }
-
     public function toString(bool $php_native = false) : string
     {
         $ctx = ['data'=>'', 'comma'=>false];
@@ -909,13 +857,10 @@ class BinsonParser extends BinsonProcessor
 
     public function deserialize() : array
     {
-        // try here alternate way via toString()
         $ctx = [];
         $res = $this->advance(self::ADVANCE_SKIP_BLOCK, 0, [$this, 'cbDeserializer'], $ctx);
         return $res? $ctx['data'][0] : null;
     }    
-
-    /*======= Private method implementations ====================================*/
 
     private function callbackWrapper(?callable $cb, array $state_update, &$param = null) : bool
     {
@@ -935,8 +880,8 @@ class BinsonParser extends BinsonProcessor
             if ($this->state['id'] & self::STATE_MASK_EXIT)
                 return false;
             
-            $state_req = $this->requestStateTransition([$this, 'processOne']);//$this->processOne());
-            $update_req = array_replace($this->state['top'], $state_req); //?? improve this                    
+            $state_req = $this->requestStateTransition([$this, 'processOne']);
+            $update_req = array_replace($this->state['top'], $state_req);
 
             $cb_called = false;
 
@@ -994,7 +939,7 @@ class BinsonParser extends BinsonProcessor
                     if ($skip_state === self::ADVANCE_LEAVE_BLOCK)
                     {
                         if ($this->depth === 0)
-                            $this->state['id'] = self::STATE_DONE; // fix this
+                            $this->state['id'] = self::STATE_DONE;
 
                         if ($this->depth === 0 || $this->depth < $orig_depth)
                             return true;                        
@@ -1008,7 +953,7 @@ class BinsonParser extends BinsonProcessor
 
                 case self::ADVANCE_LEAVE_BLOCK:
                     if ($this->depth === 0)
-                        $this->state['id'] = self::STATE_DONE; // fix this
+                        $this->state['id'] = self::STATE_DONE;
 
                     if ($this->depth === 0 || $this->depth < $orig_depth)
                         return true;
@@ -1025,28 +970,6 @@ class BinsonParser extends BinsonProcessor
         }
         return true;
     }
-
-    /* Utility function which return false in case of type mismatch */
-    private function ensureFilter(int $scan_flag, int $ensure_type) : bool
-    {               
-        $type = $this->getType(); 
-        if ($ensure_type == binson::BINSON_ID_UNKNOWN || !($scan_flag & PARSER_ADVANCE_ENSURE_TYPE))
-            return true;
-
-        if ($ensure_type == BINSON_ID_BLOCK && !$this->isBlock())
-            return false;
-
-        if ($ensure_type != BINSON_ID_BLOCK && $ensure_type != $type)
-            return false;
-
-        return true;
-    }
-
-    /*
-    private function isInObject() : bool
-    {
-        return (bool)($this->state->id & self::STATE_MASK_OBJECT);
-    }*/
 
     private function isBlock() : bool
     {
@@ -1260,7 +1183,6 @@ class BinsonParser extends BinsonProcessor
                 return true;
             case self::STATE_AT_VALUE:
             {
-                // totally ignore "unsupported" end types here            
                 if (!($new_state['type'] & self::TYPE_MASK_VALUE))
                     return true;
 
@@ -1283,8 +1205,6 @@ class BinsonParser extends BinsonProcessor
     
                 default: /* we should not get here */
                     break;
-                    //throw new BinsonException(binson::ERROR_WRONG_TYPE, 
-                    //        "unsupported type detected: ".$new_state['type']);
                 }
             }
             case self::STATE_DONE:
