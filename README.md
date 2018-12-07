@@ -42,8 +42,8 @@ Current status
 --------------
 
 * Release v1.0 (created 2018-Nov-5)
-* All heavy development moved to v2.0 branch
-* Major code documentation required (? follow [WordPress inline documentation best practices](https://make.wordpress.org/core/handbook/best-practices/inline-documentation-standards/php/))
+* Schedulled release v1.1 for 2018-Dec-31
+* Unit test line coverage is 90%
 
 Known ports
 ------------
@@ -234,6 +234,13 @@ $is_valid = $parser->verify();
 
 
 ## Changelog
+
+
+#### 2018-12-8
+
+* Documented all public methods
+* Schedulled release v1.1 for 2018-Dec-31
+
 
 #### 2018-11-5
 

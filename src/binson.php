@@ -1,5 +1,8 @@
 <?php declare(strict_types=1);
 
+/**
+ * Public 'binson' definitions
+ */
 abstract class binson {
     const BINSON_API_VERSION = 'binson_php_v1.0.0r';
 
@@ -63,18 +66,34 @@ abstract class binson {
         'serializer_sort_fields'  => false
     ];
 
-    // used to wrap strings to make it looking like BYTES for serializer
+    /**
+     * Used to wrap strings to make it looking like BYTES for serializer
+     *
+     * @param string $s
+     * @return void
+     */
     static function BYTES(string $s)
     {
         return (object)$s;
     }
 
-    // do nothing, just to have a pair: BYTES() & STRING()
+    /**
+     * Do nothing, just to have a pair: BYTES() & STRING()
+     *
+     * @param string $s
+     * @return void
+     */
     static function STRING(string $s)
     {
         return $s;
     }    
-
+    
+    /**
+     * Check if PHP variable $var could be directly mapped to binson BYTES type
+     *
+     * @param [type] $var
+     * @return boolean
+     */
     static function isBYTES($var) : bool
     {
         return (is_object($var) &&
@@ -83,14 +102,30 @@ abstract class binson {
                 is_string($var->scalar))? true : false;
     }    
 
+    /**
+     * Check if PHP variable $var could be directly mapped to binson STRING type
+     *
+     * @param [type] $var
+     * @return boolean
+     */
     static function isSTRING($var) : bool
     {
         return is_string($var)? true : false;
     }    
 }
 
+/**
+ * Binson specific exception class
+ */
 class BinsonException extends Exception
-{
+{    
+    /**
+     * Constructor
+     *
+     * @param [type] $code
+     * @param string $message
+     * @param Throwable $previous
+     */
     public function __construct($code, $message = "", Throwable $previous = null)
     {
         $msg = '';
@@ -119,7 +154,13 @@ class BinsonException extends Exception
     }
 }
 
-
+/**
+ * Check if specified bytearray represents valid binson object.
+ *
+ * @param string $raw
+ * @param array $cfg
+ * @return boolean
+ */
 function binson_verify(string $raw, array $cfg = null) : bool
 {
     $parser = new BinsonParser($raw, $cfg);
@@ -134,7 +175,14 @@ function binson_verify(string $raw, array $cfg = null) : bool
     }
 }
 
-
+/**
+ * Returns a binary string containing binson representation of the supplied array value.
+ * (serialization)
+ *
+ * @param array $src
+ * @param array $cfg
+ * @return string|null
+ */
 function binson_encode(array $src, array $cfg = null) : ?string
 {   
     $dst = null;
@@ -151,7 +199,14 @@ function binson_encode(array $src, array $cfg = null) : ?string
     }    
 }
 
-
+/**
+ * Takes binson encoded binary string and converts it into a PHP variable.
+ * (deserialization)
+ *
+ * @param string $raw
+ * @param array $cfg
+ * @return array|null
+ */
 function binson_decode(string $raw, array $cfg = null) : ?array
 {
     $parser = new BinsonParser($raw, $cfg);
@@ -166,6 +221,9 @@ function binson_decode(string $raw, array $cfg = null) : ?array
     }
 }
 
+/**
+ * Abstract parent for both BinsonWriter & BinsonParser
+ */
 abstract class BinsonProcessor
 {
     // Suffix "_" means helper state: no new data required to make 
@@ -339,6 +397,11 @@ abstract class BinsonProcessor
     protected $state;
     private   $data;
 
+    /**
+     * Reset to initial state
+     *
+     * @return void
+     */
     public function reset()
     {
         $this->depth = 0;
@@ -347,21 +410,42 @@ abstract class BinsonProcessor
         $this->state[] = ['id' => self::STATE_UNDEFINED, 'block_type' => binson::TYPE_NONE];
     }    
 
+    /**
+     * Returns the name of last parsed item
+     *
+     * @return string
+     */
     public function getName() : string
     {
         return $this->state['name'];
     }
 
+    /**
+     * Returns the type of last parsed item
+     *
+     * @return void
+     */
     public function getType()
     {
         return $this->state['type'];
     }
 
+    /**
+     * Returns current block scope type (TYPE_OBJECT vs TYPE_ARRAY)
+     *
+     * @return integer
+     */
     public function getBlockType() : int
     {
         return $this->state['block_type'];
     }
 
+    /**
+     * Returns current value
+     *
+     * @param integer $ensure_type
+     * @return void
+     */
     public function getValue(int $ensure_type = binson::TYPE_NONE)
     {
         $state = $this->state['top'];
@@ -400,10 +484,19 @@ abstract class BinsonProcessor
     }
 }
 
+/**
+ * Class used for binson generation
+ */
 class BinsonWriter extends BinsonProcessor
 {
     private $data_len;	
 
+    /**
+     * Constructor
+     *
+     * @param string $dst
+     * @param array $cfg
+     */
     public function __construct(string &$dst = null, array $cfg = null)
     {
         $this->config = $cfg ?? binson::CFG_DEFAULT;
@@ -416,6 +509,11 @@ class BinsonWriter extends BinsonProcessor
         parent::reset();
     }
 
+    /**
+     * Write new OBJECT begin marker to the output stream
+     *
+     * @return BinsonWriter
+     */
    public function objectBegin() : BinsonWriter
     {
         $this->depth++;
@@ -424,6 +522,11 @@ class BinsonWriter extends BinsonProcessor
         return $this;
     }
 
+    /**
+     * Write new OBJECT end marker to the output stream
+     *
+     * @return BinsonWriter
+     */
     public function objectEnd() : BinsonWriter
     {
         unset($this->state['name']);        
@@ -432,6 +535,11 @@ class BinsonWriter extends BinsonProcessor
         return $this;
     }
 
+    /**
+     * Write new ARRAY begin marker to the output stream
+     *
+     * @return BinsonWriter
+     */
     public function arrayBegin() : BinsonWriter
     {
         $this->depth++;
@@ -440,6 +548,11 @@ class BinsonWriter extends BinsonProcessor
     	return $this;
     }
 
+    /**
+     * Write new ARRAY end marker to the output stream
+     *
+     * @return BinsonWriter
+     */
     public function arrayEnd() : BinsonWriter
     {
         unset($this->state['name']);
@@ -448,40 +561,81 @@ class BinsonWriter extends BinsonProcessor
     	return $this;
     }
 
+    /**
+     * Write specified BOOLEAN value to the output stream
+     *
+     * @param boolean $val
+     * @return BinsonWriter
+     */
     public function putBoolean(bool $val) : BinsonWriter
     {
     	$this->writeToken(binson::TYPE_BOOLEAN, $val? binson::DEF_TRUE : binson::DEF_FALSE);
     	return $this;
     }
 
+    /**
+     * Write 'true' BOOLEAN value to the output stream
+     *
+     * @return BinsonWriter
+     */
     public function putTrue() : BinsonWriter
     {   
         return $this->putBoolean(true);
     }
 
+    /**
+     * Write 'false' BOOLEAN value to the output stream
+     *
+     * @return BinsonWriter
+     */
     public function putFalse() : BinsonWriter
     {
         return $this->putBoolean(false);
     }
 
+    /**
+     * Write specified INTEGER value to the output stream
+     *
+     * @param integer $val
+     * @return BinsonWriter
+     */
     public function putInteger(int $val) : BinsonWriter
     {
     	$this->writeToken(binson::TYPE_INTEGER, $val);
     	return $this;
     }
 
+    /**
+     * Write specified DOUBLE value to the output stream
+     *
+     * @param float $val
+     * @return BinsonWriter
+     */
     public function putDouble(float $val) : BinsonWriter
     {
     	$this->writeToken(binson::TYPE_DOUBLE, $val);
     	return $this;
     }
 
+    /**
+     * Write specified STRING value to the output stream
+     *
+     * @param string $val
+     * @return BinsonWriter
+     */
     public function putString(string $val) : BinsonWriter
     {
     	$this->writeToken(binson::TYPE_STRING, $val);
     	return $this;
     }
 
+    /**
+     * Write specified string to the output stream
+     * as a name part of the OBJECT's name:value pair
+     *
+     * @param string $val
+     * @return BinsonWriter
+     */
     public function putName(string $val) : BinsonWriter
     {
         if ($this->state['block_type'] === binson::TYPE_ARRAY)
@@ -496,39 +650,79 @@ class BinsonWriter extends BinsonProcessor
         return $this;
     }
 
+    /**
+     * Write specified BYTES value to the output stream
+     *
+     * @param string $val
+     * @return BinsonWriter
+     */
     public function putBytes(string $val) : BinsonWriter
     {
     	$this->writeToken(binson::TYPE_BYTES, $val);
     	return $this;
     }
 
+    /**
+     * Write specified byte array to the output stream
+     *
+     * @param string $bytes
+     * @return BinsonWriter
+     */
     public function putRaw(string $bytes) : BinsonWriter
     {
     	$this->data .= $bytes;
     	return $this;
     }
 
+    /**
+     * Put full output of the specified 'BinsonWriter' instance 
+     * to the current output stream
+     *
+     * @param BinsonWriter $src_writer
+     * @return BinsonWriter
+     */
     public function putInline(BinsonWriter $src_writer) : BinsonWriter
     {
     	$this->data .= $src_writer->data;
     	return $this;
     }
 
+    /**
+     * Return bytes written to the output stream since reset
+     *
+     * @return integer
+     */
 	public function length() : int
     {
     	return strlen($this->data) - $this->data_len;
     }
 
+    /**
+     * Return bytes written to the output stream since reset
+     *
+     * @return integer
+     */
 	public function counter() : int
     {
     	return $this->length();
     }
 
+    /**
+     * Return full output as a binary string
+     *
+     * @return string
+     */
     public function toBytes() : string
     {
     	return substr($this->data, $this->data_len);
     }
 
+    /**
+     * Serialize PHP native array(-s)
+     *
+     * @param [type] ...$vars
+     * @return BinsonWriter
+     */
     public function put(...$vars) : BinsonWriter
     {
         foreach ($vars as $var)
@@ -699,6 +893,9 @@ class BinsonWriter extends BinsonProcessor
     }
 }
 
+/**
+ * Utility stack structure for keeping track of depth dependant context data
+ */
 class BinsonStateStack implements ArrayAccess
 {
     private $data = [];
@@ -739,17 +936,31 @@ class BinsonStateStack implements ArrayAccess
     }
 }
 
-
+/**
+ * Class used for binson data parsing
+ */
 class BinsonParser extends BinsonProcessor
 {
     private $idx;
 
+    /**
+     * Constructor
+     *
+     * @param string $src
+     * @param array $cfg
+     */
     public function __construct(string &$src, array $cfg = null)
     {
         $this->config = $cfg ?? binson::CFG_DEFAULT;
         $this->reset($src);
     }
 
+    /**
+     * Reset to just initialized state
+     *
+     * @param string $src
+     * @return void
+     */
     public function reset(string &$src = null)
     {
         if ($src !== null)
@@ -760,6 +971,11 @@ class BinsonParser extends BinsonProcessor
         parent::reset();
     }
 
+    /**
+     * Returs 'true' if related byte stream represents valid BINSON structure
+     *
+     * @return boolean
+     */
     public function verify() : bool
     {
         $is_valid = true;
@@ -792,45 +1008,88 @@ class BinsonParser extends BinsonProcessor
         }
     }
 
+    /**
+     * Parsing navigation: enter expected OBJECT
+     *
+     * @return BinsonParser
+     */
     public function enterObject() : BinsonParser
     {
         $this->advance(self::ADVANCE_ONE, binson::TYPE_OBJECT);
         return $this;
     }
 
+    /**
+     * Parsing navigation: enter expected ARRAY
+     *
+     * @return BinsonParser
+     */
     public function enterArray() : BinsonParser
     {
         $this->advance(self::ADVANCE_ONE, binson::TYPE_ARRAY);
         return $this;
     }
 
+    /**
+     * Parsing navigation: leave expected OBJECT
+     *
+     * @return BinsonParser
+     */
     public function leaveObject() : BinsonParser
     {   
         $this->advance(self::ADVANCE_LEAVE_BLOCK);
         return $this;
     }
 
+    /**
+     * Parsing navigation: leave expected ARRAY
+     *
+     * @return BinsonParser
+     */
     public function leaveArray() : BinsonParser
     {
         $this->advance(self::ADVANCE_LEAVE_BLOCK);
         return $this;
     }
 
+    /**
+     * Go to next ARRAY's item or OBJECT's name:value item for parsing
+     *
+     * @return boolean
+     */
     public function next() : bool
     {
         return $this->advance(self::ADVANCE_NEXT);
     }
 
+    /**
+     * Check if current item has same type as specified
+     *
+     * @param integer $type
+     * @return boolean
+     */
     public function ensure(int $type) : bool
     {
         return $this->getType() === $type;
     }
 
+    /**
+     * Return 'true' if end of top level block reached when parsing
+     *
+     * @return boolean
+     */
     public function isDone() : bool
     {
         return $this->state['id'] === self::STATE_DONE;
     }
 
+    /**
+     * Seek within current OBJECT to name:value pair with 'name' specified
+     * Return 'true' if pair found, and 'false' otherwice
+     *
+     * @param string $name
+     * @return boolean
+     */
     public function field(string $name) : bool
     {        
         if (is_null($name))
@@ -848,6 +1107,12 @@ class BinsonParser extends BinsonProcessor
         return false;
     }
 
+    /**
+     * Return JSON-like textual representation
+     *
+     * @param boolean $php_native
+     * @return string
+     */
     public function toString(bool $php_native = false) : string
     {
         $ctx = ['data'=>'', 'comma'=>false];
@@ -855,6 +1120,11 @@ class BinsonParser extends BinsonProcessor
         return $res? $ctx['data'] : null;
     }
 
+    /**
+     * Deserialize input stream to PHP array
+     *
+     * @return array
+     */
     public function deserialize() : array
     {
         $ctx = [];
